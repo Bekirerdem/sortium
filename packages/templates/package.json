@@ -1,0 +1,16 @@
+{
+  "name": "@cwf/templates",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "bun test",
+    "verify": "bun bin/verify.ts",
+    "register": "bun scripts/register.ts"
+  },
+  "dependencies": {
+    "viem": "2.57.4"
+  },
+  "devDependencies": {
+    "bun-types": "^1.4.3"
+  }
+}
