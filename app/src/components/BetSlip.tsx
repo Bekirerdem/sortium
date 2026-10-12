@@ -6,7 +6,7 @@ import { burst } from "../lib/confetti";
 import { multiplier } from "../lib/format";
 import { errorText, useLang, useT } from "../lib/i18n";
 import { splitLabel } from "../lib/market";
-import { EASE, reduced, tweenNumber, useMagnetic } from "../lib/motion";
+import { EASE, reduced, tweenNumber } from "../lib/motion";
 import type { Wallet } from "../hooks/useWallet";
 
 type Props = {
@@ -30,7 +30,7 @@ export function BetSlip({ marketId, label, art, pools, selected, open, wallet, o
   const [busy, setBusy] = useState(false);
   const slip = useRef<HTMLDivElement>(null);
   const payout = useRef<HTMLElement>(null);
-  const go = useMagnetic<HTMLButtonElement>(0.25);
+  const go = useRef<HTMLButtonElement>(null);
   const raw = (() => {
     try {
       return parseUnits(String(amount || 0), 6);

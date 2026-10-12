@@ -530,5 +530,7 @@ export function errorText(e: unknown, l: Lang): string {
   const name = (e as { wallet?: string }).wallet ?? "";
   if (code === "unsupported" || code === "rejected" || code === "none") return STR[l].picker.errors[code](name);
   if (code === 4001) return STR[l].picker.errors.rejected();
-  return String((e as Error).message ?? e).split("\n")[0].slice(0, 140);
+  // viem puts the decoded revert reason on the lines after its first one; keep them together
+  const err = e as { shortMessage?: string; message?: string };
+  return String(err.shortMessage ?? err.message ?? e).split(/\r?\n/).map((s) => s.trim()).filter(Boolean).slice(0, 2).join(" ").slice(0, 160);
 }

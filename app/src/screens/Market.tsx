@@ -16,7 +16,7 @@ import { EXPLORER, claim, readCodeHash } from "../lib/chain";
 import { avatar, compactNum, countdown, shortAddr, usd } from "../lib/format";
 import { ago, decidedAt, errorText, useLang, useT } from "../lib/i18n";
 import { artFor, coverOf, leaderIndex, splitLabel } from "../lib/market";
-import { EASE, reduced, useEntrance, useMagnetic, useTilt } from "../lib/motion";
+import { EASE, reduced, useEntrance, useTilt } from "../lib/motion";
 import { displayOutcome, displayQuestion } from "../lib/question";
 import { useNow } from "../hooks/useNow";
 import { category, family } from "../lib/market";
@@ -68,7 +68,7 @@ export function Market({ id, initialPick, wallet, markets, onToast, onArt }: Pro
   const scope = useRef<HTMLDivElement>(null);
   const tilt = useTilt<HTMLDivElement>(8);
   const coverImg = useRef<HTMLImageElement>(null);
-  const claimBtn = useMagnetic<HTMLButtonElement>(0.25);
+  const claimBtn = useRef<HTMLButtonElement>(null);
   const now = useNow();
   const ready = !!meta && !!chain;
 

@@ -7,27 +7,6 @@ export const reduced = () => typeof matchMedia !== "undefined" && matchMedia("(p
 /** Shared easing vocabulary (DESIGN.md: 3 tokens). */
 export const EASE = { land: "expo.out", pop: "back.out(1.6)", shift: "power3.inOut" } as const;
 
-/** Buttons lean toward the cursor and spring back. */
-export function useMagnetic<T extends HTMLElement>(strength = 0.3): RefObject<T | null> {
-  const ref = useRef<T>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || reduced() || matchMedia("(pointer: coarse)").matches) return;
-    const x = gsap.quickTo(el, "x", { duration: 0.5, ease: "elastic.out(1, 0.4)" });
-    const y = gsap.quickTo(el, "y", { duration: 0.5, ease: "elastic.out(1, 0.4)" });
-    const move = (e: PointerEvent) => {
-      const r = el.getBoundingClientRect();
-      x((e.clientX - (r.left + r.width / 2)) * strength);
-      y((e.clientY - (r.top + r.height / 2)) * strength);
-    };
-    const leave = () => { x(0); y(0); };
-    el.addEventListener("pointermove", move);
-    el.addEventListener("pointerleave", leave);
-    return () => { el.removeEventListener("pointermove", move); el.removeEventListener("pointerleave", leave); };
-  }, [strength]);
-  return ref;
-}
-
 /** A cover that tilts in 3D toward the pointer. */
 export function useTilt<T extends HTMLElement>(max = 10): RefObject<T | null> {
   const ref = useRef<T>(null);

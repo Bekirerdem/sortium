@@ -3,7 +3,7 @@ import { faucet } from "../lib/api";
 import { balanceOf, watchToken } from "../lib/chain";
 import { avatar, shortAddr, usd } from "../lib/format";
 import { useLang, useT } from "../lib/i18n";
-import { tweenNumber, useMagnetic } from "../lib/motion";
+import { tweenNumber } from "../lib/motion";
 import type { Wallet } from "../hooks/useWallet";
 
 /** Header wallet: connect, balance that counts up, one-tap test dollars, and a small menu. */
@@ -12,7 +12,7 @@ export function FaucetButton({ wallet, onToast }: { wallet: Wallet; onToast: (m:
   const lang = useLang();
   const [busy, setBusy] = useState(false);
   const [menu, setMenu] = useState(false);
-  const ref = useMagnetic<HTMLButtonElement>(0.2);
+  const ref = useRef<HTMLButtonElement>(null);
   const bal = useRef<HTMLSpanElement>(null);
   const autoFunded = useRef<string | null>(null);
 

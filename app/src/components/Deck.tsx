@@ -7,7 +7,7 @@ import type { ApiMarket } from "../lib/api";
 import { countdown, multiplier } from "../lib/format";
 import { useLang, useT } from "../lib/i18n";
 import { artFor, coverOf, family, splitLabel } from "../lib/market";
-import { EASE, reduced, useMagnetic, withViewTransition } from "../lib/motion";
+import { EASE, reduced, withViewTransition } from "../lib/motion";
 import { displayQuestion } from "../lib/question";
 
 type Props = { markets: ApiMarket[]; wallet: Wallet; onArt: (a?: string) => void };
@@ -58,7 +58,7 @@ export function Deck({ markets, wallet, onArt }: Props) {
   const busy = useRef(false);
   const entering = useRef<0 | 1 | -1>(0);
   const swipe = useRef<number | null>(null);
-  const cta = useMagnetic<HTMLAnchorElement>(0.2);
+  const cta = useRef<HTMLAnchorElement>(null);
 
   const n = markets.length;
   const m = markets[idx % n];

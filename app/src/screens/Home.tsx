@@ -13,7 +13,7 @@ import { EXPLORER, watchToken } from "../lib/chain";
 import { avatar, compactNum, shortAddr, usd } from "../lib/format";
 import { ago, useLang, useT } from "../lib/i18n";
 import { artFor, coverOf, splitLabel } from "../lib/market";
-import { EASE, reduced, tweenNumber, useEntrance, useMagnetic, useReveal, withViewTransition } from "../lib/motion";
+import { EASE, reduced, tweenNumber, useEntrance, useReveal, withViewTransition } from "../lib/motion";
 import { displayOutcome, displayQuestion } from "../lib/question";
 
 const HERO_ORDER = ["us", "tr", "gb", "kr", "br", "jp", "de", "fr", "mx", "in"];
@@ -150,7 +150,7 @@ export function Home({ markets, wallet, onArt, cat }: { markets: ApiMarket[]; wa
   const lang = useLang();
   const now = useNow(15_000);
   const scope = useRef<HTMLDivElement>(null);
-  const start = useMagnetic<HTMLButtonElement>(0.25);
+  const start = useRef<HTMLButtonElement>(null);
   const stats = usePoll(getStats, 20_000);
   const activity = usePoll(() => getActivity(30), 12_000);
   const leaders = usePoll(getLeaders, 30_000);

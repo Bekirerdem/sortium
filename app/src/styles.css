@@ -7,7 +7,7 @@ TYPE     Schibsted Grotesk 400–900, one family. Sentence case everywhere. Tabu
 LAYOUT   home: hero copy + live deck, ticker, three steps, closing-soon rail, feed + leaderboard, token band.
          market: question and cover left, board right, slip floats at the bottom.
 MOTION   one entrance per page; deck cards fling away and land; ticker drifts; numbers count; covers tilt, flip, morph;
-         slow aurora behind everything; magnetic primary buttons. Reduced motion turns all of it off.
+         slow aurora behind everything; reduced motion turns all of it off.
 REFUSALS no flat black, no ALL CAPS labels, no monospace labels except the token address, no emoji, no arrows in button text.
 */
 :root {

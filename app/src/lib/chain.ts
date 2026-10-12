@@ -154,6 +154,9 @@ export const balanceOf = (user: Address) =>
 /** Signs an EIP-2612 permit and bets in a single transaction. */
 export async function placeBet(user: Address, id: bigint, outcome: number, amount: bigint) {
   const w = await wallet(user);
+  // an earlier approval already covers it: one plain transaction, no signature
+  const allowed = await pub.readContract({ address: ADDRESSES.tusd, abi: testUsdAbi, functionName: "allowance", args: [user, ADDRESSES.markets] });
+  if (allowed >= amount) return approveAndBet(user, id, outcome, amount);
   const nonce = await pub.readContract({ address: ADDRESSES.tusd, abi: testUsdAbi, functionName: "nonces", args: [user] });
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 1800);
   const sig = await w.signTypedData({
@@ -170,13 +173,34 @@ export async function placeBet(user: Address, id: bigint, outcome: number, amoun
     primaryType: "Permit",
     message: { owner: user, spender: ADDRESSES.markets, value: amount, nonce, deadline },
   });
-  const { v, r, s } = parseSignature(sig);
-  const hash = await w.writeContract({
-    address: ADDRESSES.markets,
-    abi: poolMarketsAbi,
-    functionName: "betWithPermit",
-    args: [id, outcome, amount, deadline, Number(v), r, s],
-  });
+  // smart-account wallets (MetaMask with EIP-7702) return wrapped signatures the token's permit cannot verify;
+  // check the permit bet against the chain first and fall back to approve + bet when it would revert
+  if (sig.length === 132) {
+    const { v, r, s, yParity } = parseSignature(sig);
+    const args = [id, outcome, amount, deadline, Number(v ?? BigInt(yParity + 27)), r, s] as const;
+    const ok = await pub
+      .simulateContract({ account: user, address: ADDRESSES.markets, abi: poolMarketsAbi, functionName: "betWithPermit", args })
+      .then(() => true, () => false);
+    if (ok) {
+      const hash = await w.writeContract({ address: ADDRESSES.markets, abi: poolMarketsAbi, functionName: "betWithPermit", args });
+      await pub.waitForTransactionReceipt({ hash });
+      return hash;
+    }
+  }
+  return approveAndBet(user, id, outcome, amount);
+}
+
+/** Two transactions, for wallets whose permit signatures the token cannot verify. */
+async function approveAndBet(user: Address, id: bigint, outcome: number, amount: bigint) {
+  const w = await wallet(user);
+  const allowance = await pub.readContract({ address: ADDRESSES.tusd, abi: testUsdAbi, functionName: "allowance", args: [user, ADDRESSES.markets] });
+  if (allowance < amount) {
+    // the whole balance, so a few more picks need no second approval
+    const balance = await balanceOf(user);
+    const a = await w.writeContract({ address: ADDRESSES.tusd, abi: testUsdAbi, functionName: "approve", args: [ADDRESSES.markets, balance > amount ? balance : amount] });
+    await pub.waitForTransactionReceipt({ hash: a });
+  }
+  const hash = await w.writeContract({ address: ADDRESSES.markets, abi: poolMarketsAbi, functionName: "bet", args: [id, outcome, amount] });
   await pub.waitForTransactionReceipt({ hash });
   return hash;
 }
