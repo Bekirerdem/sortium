@@ -1,14 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ADDRESSES, poolMarketsAbi } from "@cwf/templates";
 import type { Wallet } from "../hooks/useWallet";
 import type { ApiMarket } from "../lib/api";
 import { pub } from "../lib/chain";
 import { usd } from "../lib/format";
+import { coverOf } from "../lib/market";
+import { useEntrance, withViewTransition } from "../lib/motion";
+import { displayQuestion } from "../lib/question";
 
 type Line = { m: ApiMarket; staked: bigint; claimable: bigint };
 
 export function MyBets({ markets, wallet }: { markets: ApiMarket[]; wallet: Wallet }) {
   const [lines, setLines] = useState<Line[] | null>(null);
+  const scope = useRef<HTMLDivElement>(null);
+  useEntrance(scope, [lines?.length ?? -1]);
 
   useEffect(() => {
     const user = wallet.address;
@@ -35,26 +40,31 @@ export function MyBets({ markets, wallet }: { markets: ApiMarket[]; wallet: Wall
 
   if (!wallet.address) {
     return (
-      <div style={{ paddingTop: 40 }}>
-        <button className="btn primary" onClick={wallet.login}>Connect wallet to see your bets</button>
+      <div ref={scope}>
+        <h1 className="page-title" data-rise>My picks</h1>
+        <button className="btn light" onClick={wallet.login} data-rise>Connect wallet to see your picks</button>
       </div>
     );
   }
-  if (!lines) return <p className="preview" style={{ paddingTop: 40 }}>Reading your bets…</p>;
 
   return (
-    <div className="ledger">
-      <div className="section-head"><h2>My bets</h2><span className="eyebrow">{lines.length} markets</span></div>
-      {lines.length === 0 && <p className="preview" style={{ padding: "24px 0" }}>No bets yet. Pick something on Today.</p>}
-      <div className="rows">
-        {lines.map(({ m, staked, claimable }) => (
-          <a className="row" key={m.id} href={`#/m/${m.id}`}>
-            <span className="q">{m.question}</span>
-            <span className="lead">{m.status}</span>
-            <span className="num">{usd(staked)} staked</span>
-            <span className="t num">{claimable > 0n ? `collect ${usd(claimable)}` : "—"}</span>
-          </a>
-        ))}
+    <div ref={scope}>
+      <h1 className="page-title" data-rise>My picks</h1>
+      {!lines && <p className="loading">Reading your picks from the chain</p>}
+      {lines?.length === 0 && <p className="empty">No picks yet. Today's big market is a good place to start.</p>}
+      <div className="picks">
+        {lines?.map(({ m, staked, claimable }) => {
+          const cover = coverOf(m);
+          return (
+            <a key={m.id} className="pick-row" href={`#/m/${m.id}`} data-rise
+              onClick={(e) => { e.preventDefault(); withViewTransition(() => (location.hash = `#/m/${m.id}`)); }}>
+              {cover ? <img src={cover} alt="" /> : <span className="ph" />}
+              <div><div className="q">{displayQuestion(m)}</div><div className="s tab">{usd(staked)} tUSD in</div></div>
+              <span className="s">{m.status === "open" ? "Open" : m.status === "settled" ? "Decided" : m.status === "void" ? "Refunded" : "Being checked"}</span>
+              <span className="btn ghost">{claimable > 0n ? `Collect ${usd(claimable)}` : "View"}</span>
+            </a>
+          );
+        })}
       </div>
     </div>
   );

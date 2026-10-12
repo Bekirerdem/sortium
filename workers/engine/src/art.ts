@@ -39,21 +39,49 @@ export function withArt<T extends WithMeta>(markets: T[], apple: Map<string, str
  * Artwork from each storefront's top-100 feed (edge-cached for an hour). The iTunes lookup API answers 403 to
  * Workers, but the chart feed does not, and every candidate came from that chart. Failures just mean no artwork.
  */
-export async function lookupApple(byCountry: Record<string, string[]>): Promise<Map<string, string>> {
+export async function lookupApple(byCountry: Record<string, string[]>, db?: D1Database): Promise<Map<string, string>> {
   const out = new Map<string, string>();
+  const keys = Object.entries(byCountry).flatMap(([cc, ids]) => ids.map((id) => `${cc}:${id}`));
+  // Apple's feed edge fails often; artwork found once is kept in D1 so a flaky minute doesn't blank the covers
+  if (db && keys.length) {
+    await db.prepare("CREATE TABLE IF NOT EXISTS art_cache (key TEXT PRIMARY KEY, url TEXT NOT NULL)").run();
+    for (let i = 0; i < keys.length; i += 90) {
+      const part = keys.slice(i, i + 90);
+      const { results } = await db.prepare(`SELECT key, url FROM art_cache WHERE key IN (${part.map(() => "?").join(",")})`).bind(...part).all<{ key: string; url: string }>();
+      for (const r of results) out.set(r.key, r.url);
+    }
+  }
+  const missing = Object.keys(byCountry).filter((cc) => byCountry[cc].some((id) => !out.has(`${cc}:${id}`)));
+  const fresh: [string, string][] = [];
   await Promise.all(
-    Object.keys(byCountry).map(async (cc) => {
+    missing.map(async (cc) => {
       try {
-        const res = await fetch(`https://rss.marketingtools.apple.com/api/v2/${cc}/music/most-played/100/songs.json`, {
-          cf: { cacheTtl: 3600, cacheEverything: true },
-        } as RequestInit);
-        if (!res.ok) return;
-        const data = (await res.json()) as { feed?: { results?: { id: string; artworkUrl100?: string }[] } };
-        for (const r of data.feed?.results ?? []) if (r.artworkUrl100) out.set(`${cc}:${r.id}`, r.artworkUrl100);
+        // big feeds fail more often at Apple's edge; fall back to smaller ones (candidates sit near the top anyway)
+        let data: { feed?: { results?: { id: string; artworkUrl100?: string }[] } } | null = null;
+        for (const n of [100, 25, 10]) {
+          const res = await fetch(`https://rss.marketingtools.apple.com/api/v2/${cc}/music/most-played/${n}/songs.json`, {
+            // never cache Apple's intermittent 5xx answers, only good ones
+            cf: { cacheTtlByStatus: { "200-299": 3600, "300-599": 0 }, cacheEverything: true },
+          } as RequestInit);
+          if (res.ok) {
+            data = await res.json();
+            break;
+          }
+        }
+        if (!data) return;
+        const wanted = new Set(byCountry[cc]);
+        for (const r of data.feed?.results ?? []) {
+          if (!r.artworkUrl100) continue;
+          out.set(`${cc}:${r.id}`, r.artworkUrl100);
+          if (wanted.has(r.id)) fresh.push([`${cc}:${r.id}`, r.artworkUrl100]);
+        }
       } catch {
         // artwork is decoration; the market still works without it
       }
     }),
   );
+  if (db && fresh.length) {
+    await db.batch(fresh.map(([k, u]) => db.prepare("INSERT OR REPLACE INTO art_cache(key, url) VALUES (?, ?)").bind(k, u)));
+  }
   return out;
 }

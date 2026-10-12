@@ -28,11 +28,11 @@ export async function listMarkets(db: D1Database, url: URL) {
         : db.prepare("SELECT * FROM markets WHERE status = ? ORDER BY market_id DESC LIMIT 200").bind(status);
   const { results } = await q.all<Row>();
   const markets = results.map(toApi);
-  return Response.json({ markets: withArt(markets, await lookupApple(appleIdsByCountry(markets))) });
+  return Response.json({ markets: withArt(markets, await lookupApple(appleIdsByCountry(markets), db)) });
 }
 
 async function cachedJson(url: string): Promise<unknown> {
-  const res = await fetch(url, { cf: { cacheTtl: 60, cacheEverything: true } } as RequestInit);
+  const res = await fetch(url, { cf: { cacheTtlByStatus: { "200-299": 60, "300-599": 0 }, cacheEverything: true } } as RequestInit);
   if (!res.ok) throw new Error(String(res.status));
   return res.json();
 }
@@ -64,7 +64,7 @@ export async function getMarket(db: D1Database, id: number, youtubeKey?: string)
   } catch {
     // live data is best-effort; the market page still works without it
   }
-  const [illustrated] = withArt([m], await lookupApple(appleIdsByCountry([m])));
+  const [illustrated] = withArt([m], await lookupApple(appleIdsByCountry([m]), db));
   return Response.json({ ...illustrated, live });
 }
 

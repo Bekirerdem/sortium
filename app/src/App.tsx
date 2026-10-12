@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Backdrop } from "./components/Backdrop";
 import { FaucetButton } from "./components/FaucetButton";
 import { useMarkets } from "./hooks/useMarkets";
 import { useWallet } from "./hooks/useWallet";
-import { Category } from "./screens/Category";
+import { withViewTransition } from "./lib/motion";
+import { Browse } from "./screens/Browse";
 import { Market } from "./screens/Market";
 import { MyBets } from "./screens/MyBets";
 import { Today } from "./screens/Today";
@@ -25,34 +27,43 @@ export default function App() {
   const wallet = useWallet();
   const { markets, error } = useMarkets();
   const [toast, setToast] = useState<string | null>(null);
+  const [art, setArt] = useState<string | undefined>();
+  const onArt = useCallback((a?: string) => a && setArt(a), []);
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 4500);
+    const t = setTimeout(() => setToast(null), 5000);
     return () => clearTimeout(t);
   }, [toast]);
 
-  const marketId = hash.match(/^#\/m\/(\d+)/)?.[1];
-  const page = marketId ? "market" : hash.startsWith("#/c") ? "categories" : hash.startsWith("#/me") ? "me" : "today";
+  const route = hash.match(/^#\/m\/(\d+)(?:\?pick=(\d+))?/);
+  const page = route ? "market" : hash.startsWith("#/browse") ? "browse" : hash.startsWith("#/me") ? "me" : "today";
+  const nav = (to: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    withViewTransition(() => (location.hash = to));
+  };
 
   return (
     <>
-      <header className="bar">
-        <a className="brand" href="#/">score<b>/</b>board</a>
+      <Backdrop art={art} />
+      <header className="top">
+        <a className="logo" href="#/" onClick={nav("#/")}>Sortium</a>
         <nav className="nav">
-          <a href="#/" aria-current={page === "today" ? "page" : undefined}>Today</a>
-          <a href="#/c" aria-current={page === "categories" ? "page" : undefined}>Categories</a>
-          <a href="#/me" aria-current={page === "me" ? "page" : undefined}>My bets</a>
+          <a href="#/" onClick={nav("#/")} aria-current={page === "today" ? "page" : undefined}>Today</a>
+          <a href="#/browse" onClick={nav("#/browse")} aria-current={page === "browse" ? "page" : undefined}>Browse</a>
+          <a href="#/me" onClick={nav("#/me")} aria-current={page === "me" ? "page" : undefined}>My picks</a>
         </nav>
         <FaucetButton wallet={wallet} onToast={setToast} />
       </header>
       <main>
         {wallet.error && <p className="err">{wallet.error}</p>}
-        {error && !markets && <p className="err" style={{ paddingTop: 24 }}>Engine unreachable: {error}</p>}
-        {page === "market" && <Market id={Number(marketId)} wallet={wallet} onToast={setToast} />}
-        {page !== "market" && !markets && !error && <p className="preview" style={{ paddingTop: 40 }}>Loading markets…</p>}
-        {page === "today" && markets && <Today markets={markets} />}
-        {page === "categories" && markets && <Category markets={markets} />}
+        {error && !markets && <p className="err">Can't reach the market engine right now. Retrying every 30 seconds.</p>}
+        {page === "market" && (
+          <Market key={route![1]} id={Number(route![1])} initialPick={route![2] ? Number(route![2]) : null} wallet={wallet} onToast={setToast} onArt={onArt} />
+        )}
+        {page !== "market" && !markets && !error && <p className="loading">Loading markets</p>}
+        {page === "today" && markets && <Today markets={markets} wallet={wallet} onArt={onArt} />}
+        {page === "browse" && markets && <Browse markets={markets} />}
         {page === "me" && markets && <MyBets markets={markets} wallet={wallet} />}
       </main>
       {toast && <div className="toast" role="status">{toast}</div>}

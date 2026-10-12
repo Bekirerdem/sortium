@@ -1,82 +1,109 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Headline } from "../components/Headline";
+import { MarketTile } from "../components/MarketTile";
+import { OptionRow } from "../components/OptionRow";
+import { Rail } from "../components/Rail";
+import { useMarket } from "../hooks/useMarket";
+import type { Wallet } from "../hooks/useWallet";
 import type { ApiMarket } from "../lib/api";
-import { countdown } from "../lib/format";
+import { countdown, usd } from "../lib/format";
+import { artFor, coverOf, leaderIndex } from "../lib/market";
+import { useEntrance, useMagnetic, useTilt, withViewTransition } from "../lib/motion";
+import { displayQuestion } from "../lib/question";
 
 export const family = (key: string) => (key.startsWith("YT") ? "YouTube" : "Music");
 
+/** "on Oct 13 at 12:00 UTC" */
+export const decidedAt = (t: number) => {
+  const d = new Date(t * 1000);
+  return `on ${d.toLocaleString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })} at ${d.toISOString().slice(11, 16)} UTC`;
+};
 const HERO_ORDER = ["us", "tr", "gb", "kr", "br", "jp", "de", "fr", "mx", "in"];
 
-function useNow() {
+export function useNow(step = 1000) {
   const [now, setNow] = useState(Date.now() / 1000);
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now() / 1000), 1000);
+    const t = setInterval(() => setNow(Date.now() / 1000), step);
     return () => clearInterval(t);
-  }, []);
+  }, [step]);
   return now;
 }
 
-const hhmm = (to: number, now: number) => {
-  const s = Math.max(0, Math.floor(to - now));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  return h > 0 ? `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}` : `${String(m).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-};
-
-export function MarketRow({ m, now }: { m: ApiMarket; now: number }) {
-  const open = m.status === "open" && m.lockTime > now;
-  return (
-    <a className="row" href={`#/m/${m.id}`}>
-      <span className="eyebrow">{family(m.templateKey)} · {m.entity.length <= 3 ? m.entity.toUpperCase() : "video"}</span>
-      <span>
-        <span className="q">{m.question}</span>
-        {m.demo && <span className="tag demo" style={{ marginLeft: 8 }}>demo</span>}
-      </span>
-      <span className="lead">{open ? "closes in" : m.status === "proposed" ? "awaiting UMA" : m.status}</span>
-      <span className="t num">{open ? countdown(m.lockTime, now) : "—"}</span>
-    </a>
-  );
-}
-
-export function Today({ markets }: { markets: ApiMarket[] }) {
-  const now = useNow();
-  const open = markets.filter((m) => m.status === "open" && m.lockTime > now).sort((a, b) => a.lockTime - b.lockTime);
-  // markets share lock times, so break ties toward the storefronts most visitors recognise
+function pickHero(open: ApiMarket[]) {
   const rank = (m: ApiMarket) => {
     const i = HERO_ORDER.indexOf(m.entity.toLowerCase());
     return i === -1 ? HERO_ORDER.length : i;
   };
-  const hero = [...open].filter((m) => !m.demo).sort((a, b) => a.lockTime - b.lockTime || rank(a) - rank(b))[0] ?? open[0];
-  const rest = open.filter((m) => m !== hero);
-  const settled = markets.filter((m) => m.status === "settled" || m.status === "void" || m.status === "proposed").slice(0, 6);
+  return [...open].filter((m) => !m.demo).sort((a, b) => a.lockTime - b.lockTime || rank(a) - rank(b))[0] ?? open[0];
+}
+
+function Hero({ m, wallet, onArt }: { m: ApiMarket; wallet: Wallet; onArt: (a?: string) => void }) {
+  const { chain } = useMarket(m.id, wallet.address);
+  const scope = useRef<HTMLDivElement>(null);
+  const tilt = useTilt<HTMLDivElement>(8);
+  const cta = useMagnetic<HTMLAnchorElement>(0.25);
+  const now = useNow();
+  const pools = chain?.pools ?? m.outcomes.map(() => 0n);
+  const lead = leaderIndex(pools);
+  const total = pools.reduce((a, b) => a + b, 0n);
+  const order = pools.map((_, i) => i).sort((a, b) => (pools[b] > pools[a] ? 1 : pools[b] < pools[a] ? -1 : a - b)).slice(0, 5);
+  const cover = artFor(m.meta, lead) ?? coverOf(m);
+  useEffect(() => onArt(cover), [cover, onArt]);
+  useEntrance(scope, [m.id]);
+  const go = (pick?: number) => withViewTransition(() => (location.hash = `#/m/${m.id}${pick !== undefined ? `?pick=${pick}` : ""}`));
 
   return (
+    <section className="split" ref={scope}>
+      <div className="stage">
+        <p className="kicker" data-rise>Today's big one. The chart is read {decidedAt(m.resolveTime)}.</p>
+        <Headline text={displayQuestion(m, { short: true })} />
+        <div className="cover" ref={tilt} data-cover style={{ viewTransitionName: `cover-${m.id}` }}>{cover && <img src={cover} alt="" />}</div>
+        <div className="facts" data-rise>
+          <div><span>Betting closes in</span><b>{countdown(m.lockTime, now)}</b></div>
+          <div><span>In the pool</span><b>{usd(total)} tUSD</b></div>
+          <div><span>Outcomes</span><b>{m.outcomes.length}</b></div>
+        </div>
+        <a ref={cta} className="btn light" href={`#/m/${m.id}`} onClick={(e) => { e.preventDefault(); go(); }} data-rise>Make your pick</a>
+      </div>
+      <div>
+        <div className="board-head" data-rise><h2>Where the money is</h2><span>multiplier if it wins</span></div>
+        <div className="opts">
+          {order.map((i) => (
+            <OptionRow key={i} label={m.outcomes[i]} art={artFor(m.meta, i)} index={i} pools={pools} stake={chain?.stakes[i] ?? 0n}
+              selected={false} won={false} disabled={false} onSelect={(k) => go(k)} />
+          ))}
+        </div>
+        <div className="how" data-rise>
+          <div><b>Everyone pays into one pot</b><p>People who pick the right answer split the whole pool, minus a 2% fee.</p></div>
+          <div><b>The chart decides</b><p>When the market ends, open code reads the official chart. No person picks the winner.</p></div>
+          <div><b>Anyone can check it</b><p>The result sits on UMA's oracle for a while. If it's wrong, anyone can dispute it.</p></div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function Today({ markets, wallet, onArt }: { markets: ApiMarket[]; wallet: Wallet; onArt: (a?: string) => void }) {
+  const now = useNow(15_000);
+  const open = markets.filter((m) => m.status === "open" && m.lockTime > now).sort((a, b) => a.lockTime - b.lockTime);
+  const hero = pickHero(open);
+  const rest = open.filter((m) => m !== hero);
+  const deciding = markets.filter((m) => m.status !== "open" || m.lockTime <= now).slice(0, 12);
+
+  if (!hero) return <p className="loading">New markets open every few minutes. Check back shortly.</p>;
+  return (
     <>
-      {hero ? (
-        <section className="hero">
-          <div className="hero-copy">
-            <span className="eyebrow"><span className="live-dot" /> &nbsp;Today's big one · {family(hero.templateKey)}</span>
-            <h1 className="hero-q"><a href={`#/m/${hero.id}`}>{hero.question}</a></h1>
-            <div className="hero-meta">
-              <span>{hero.outcomes.length} outcomes · pool bet · resolved by open code + UMA</span>
-              <a className="btn primary" href={`#/m/${hero.id}`} style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>Pick an outcome</a>
-            </div>
-          </div>
-          <div className="hero-counter num">
-            <small>Betting closes in</small>
-            {hhmm(hero.lockTime, now)}
-          </div>
-        </section>
-      ) : (
-        <section className="hero"><div className="hero-copy"><h1 className="hero-q">The factory is opening today's markets.</h1><p>New markets appear every 15 minutes.</p></div></section>
-      )}
-
-      <div className="section-head"><h2>Open now</h2><span className="eyebrow">{open.length} markets</span></div>
-      <div className="rows">{rest.map((m) => <MarketRow key={m.id} m={m} now={now} />)}</div>
-
-      {settled.length > 0 && (
+      <Hero m={hero} wallet={wallet} onArt={onArt} />
+      {rest.length > 0 && (
         <>
-          <div className="section-head"><h2>Settling</h2><span className="eyebrow">outcomes checked on UMA</span></div>
-          <div className="rows">{settled.map((m) => <MarketRow key={m.id} m={m} now={now} />)}</div>
+          <div className="rail-head"><h2>Also open</h2><span className="muted">{rest.length} markets</span></div>
+          <Rail>{rest.map((m) => <MarketTile key={m.id} m={m} now={now} />)}</Rail>
+        </>
+      )}
+      {deciding.length > 0 && (
+        <>
+          <div className="rail-head"><h2>Being decided</h2><span className="muted">results checked on UMA</span></div>
+          <Rail>{deciding.map((m) => <MarketTile key={m.id} m={m} now={now} />)}</Rail>
         </>
       )}
     </>

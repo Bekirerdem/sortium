@@ -5,6 +5,7 @@ import type { Template } from "./types";
 
 export * from "./types";
 export * from "./abi";
+export { chartQuestion, countryName } from "./templates/amTop";
 
 export const TEMPLATES: Record<string, Template> = {
   [amTop.key]: amTop,

@@ -8,10 +8,10 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       manifest: {
-        name: "scoreboard — internet markets",
-        short_name: "scoreboard",
-        theme_color: "#0d0e0b",
-        background_color: "#0d0e0b",
+        name: "Sortium",
+        short_name: "Sortium",
+        theme_color: "#17131f",
+        background_color: "#17131f",
         display: "standalone",
         icons: [
           { src: "/icons/192.png", sizes: "192x192", type: "image/png" },

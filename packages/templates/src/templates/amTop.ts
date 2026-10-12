@@ -5,7 +5,7 @@ const COUNTRIES = ["tr", "us", "kr", "br", "jp", "de", "gb", "fr", "mx", "in"] a
 const DAY = 86_400;
 export const feedUrl = (cc: string, n: number) => `https://rss.marketingtools.apple.com/api/v2/${cc}/music/most-played/${n}/songs.json`;
 
-type Feed = { feed: { results: { id: string; name: string; artistName: string }[] } };
+type Feed = { feed: { results: { id: string; name: string; artistName: string; artworkUrl100?: string }[] } };
 
 /** Apple's feed edge intermittently answers 5xx; retry a few times before giving up. */
 export async function fetchFeed(cc: string, n = 10): Promise<Feed> {
@@ -70,7 +70,9 @@ function make(key: string, demo: boolean, countries: readonly string[]): Templat
           console.error(String(e)); // one storefront failing must not block the others
           continue;
         }
-        const candidates = feed.feed.results.slice(0, 7).map((r) => ({ id: r.id, label: `${r.artistName} – ${r.name}` }));
+        const candidates = feed.feed.results
+          .slice(0, 7)
+          .map((r) => ({ id: r.id, label: `${r.artistName} – ${r.name}`, art: r.artworkUrl100?.replace("100x100bb", "600x600bb") }));
         out.push({
           templateKey: key,
           entity: cc,
