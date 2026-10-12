@@ -21,6 +21,8 @@ export function Deck({ markets, wallet, onArt }: Props) {
   const [pick, setPick] = useState<number | null>(null);
   const card = useRef<HTMLDivElement>(null);
   const busy = useRef(false);
+  const stack = useRef<HTMLDivElement>(null);
+  const entering = useRef<0 | 1 | -1>(0);
   const swipe = useRef<number | null>(null);
   const tilt = useTilt<HTMLDivElement>(6);
   const cta = useMagnetic<HTMLAnchorElement>(0.2);
@@ -37,21 +39,51 @@ export function Deck({ markets, wallet, onArt }: Props) {
 
   useEffect(() => onArt(cover), [cover, onArt]);
 
+  // after the swap the stack is re-rendered in its resting places; only the incoming card's content still has to arrive
   useLayoutEffect(() => {
-    if (!card.current || reduced()) return;
-    gsap.fromTo(card.current, { y: 24, scale: 0.95, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: 0.7, ease: EASE.pop });
-    gsap.fromTo(card.current.querySelectorAll(".dchip"), { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, stagger: 0.05, ease: EASE.land, delay: 0.15 });
+    const el = card.current;
+    const dir = entering.current;
+    entering.current = 0;
+    if (!el || reduced()) return;
+    const backs = [...(stack.current?.querySelectorAll<HTMLElement>(".dback") ?? [])];
+    // cards that moved up keep their React element; hand their position back to the stylesheet
+    gsap.set(backs, { clearProps: "transform,opacity" });
+    gsap.set(backs.map((b) => b.querySelector("img")), { clearProps: "filter" });
+    if (dir === -1) {
+      // going back: the previous card slides in from the left, on top of the stack
+      gsap.fromTo(el, { x: -160, y: 0, scale: 1, rotation: -8, opacity: 0 }, { x: 0, rotation: 0, opacity: 1, duration: 0.55, ease: EASE.pop });
+    } else if (dir === 0) {
+      gsap.fromTo(el, { x: 0, y: 24, scale: 0.95, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: 0.7, ease: EASE.pop });
+    } else {
+      gsap.set(el, { x: 0, y: 0, rotation: 0, scale: 1, opacity: 1 });
+      const last = stack.current?.querySelector(".d2");
+      if (last) gsap.from(last, { opacity: 0, scale: 0.9, duration: 0.5, ease: EASE.land, clearProps: "opacity,transform" });
+    }
+    gsap.fromTo(el.querySelectorAll(".dmeta, .dchip, .dfoot"), { y: 12, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, stagger: 0.04, ease: EASE.land });
   }, [idx]);
 
   const go = (dir: 1 | -1) => {
     if (busy.current || markets.length < 2) return;
-    const next = () => { setPick(null); setIdx((i) => (i + dir + markets.length) % markets.length); };
-    if (!card.current || reduced()) return next();
+    const next = () => { entering.current = dir; setPick(null); setIdx((i) => (i + dir + markets.length) % markets.length); };
+    const el = card.current;
+    if (!el || reduced()) return next();
     busy.current = true;
-    gsap.to(card.current, {
-      x: dir * -140, rotation: dir * -9, opacity: 0, duration: 0.38, ease: "power2.in",
-      onComplete: () => { gsap.set(card.current, { x: 0, rotation: 0 }); busy.current = false; next(); },
-    });
+    const done = () => { busy.current = false; next(); };
+    const tl = gsap.timeline({ onComplete: done });
+    if (dir === 1) {
+      // the top card is flung off, every card behind it moves up one place
+      tl.to(el, { x: -180, y: 20, rotation: -12, opacity: 0, duration: 0.42, ease: "power2.in" }, 0);
+      const d1 = stack.current?.querySelector<HTMLElement>(".d1");
+      const d2 = stack.current?.querySelector<HTMLElement>(".d2");
+      // second card takes the first one's resting place, read from the stylesheet so mobile offsets hold too
+      const d1Rest = d1 ? getComputedStyle(d1).transform : "none";
+      if (d1) tl.to(d1, { x: 0, y: 0, rotation: 0, scale: 1, duration: 0.5, ease: EASE.land }, 0.08);
+      if (d1) tl.to(d1.querySelector("img"), { filter: "blur(0px) brightness(1) saturate(1)", duration: 0.5 }, 0.08);
+      if (d2) tl.to(d2, { transform: d1Rest, opacity: 1, duration: 0.5, ease: EASE.land }, 0.08);
+    } else {
+      // going back: the top card steps down into the stack before the previous one lands on top
+      tl.to(el, { x: 22, y: -14, rotation: 3.5, scale: 0.97, opacity: 0, duration: 0.32, ease: "power2.in" }, 0);
+    }
   };
 
   const choose = (i: number) => {
@@ -75,9 +107,10 @@ export function Deck({ markets, wallet, onArt }: Props) {
       }}
       onKeyDown={(e) => { if (e.key === "ArrowRight") go(1); if (e.key === "ArrowLeft") go(-1); }}
     >
+      <div className="dstack" ref={stack}>
       {behind.map((b, k) => (
         <div key={b.id} className={`dback d${k + 1}`} aria-hidden>{coverOf(b) && <img src={coverOf(b)} alt="" />}</div>
-      ))}
+      )).reverse()}
       <div className="dcard" ref={card}>
         <div className="dtop">
           <div className="dcover" ref={tilt} style={{ viewTransitionName: `cover-${m.id}` }}>{cover && <img src={cover} alt="" />}</div>
@@ -105,6 +138,7 @@ export function Deck({ markets, wallet, onArt }: Props) {
           </a>
           <span className="dhint">{pick === null ? t.home.deckHint : mult > 0 ? t.home.deckPays(`×${mult.toFixed(2)}`) : t.home.deckFresh}</span>
         </div>
+      </div>
       </div>
       {markets.length > 1 && (
         <div className="dnav">

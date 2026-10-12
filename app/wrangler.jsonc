@@ -1,5 +1,5 @@
 {
-  // Same build as the Pages site, also served from workers.dev, which stays reachable where *.pages.dev is blocked (Türkiye).
+  // The app is served as a static-assets Worker: workers.dev stays reachable where *.pages.dev is blocked (Türkiye).
   "name": "sortium",
   "compatibility_date": "2026-10-01",
   "assets": { "directory": "./dist", "not_found_handling": "single-page-application" }
