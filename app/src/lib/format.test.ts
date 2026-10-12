@@ -18,3 +18,8 @@ test("share of pool in percent", () => {
   expect(share([1n, 3n], 1)).toBe(75);
   expect(share([0n, 0n], 1)).toBe(0);
 });
+test("Turkish countdown and numbers", () => {
+  expect(countdown(3700, 0, "tr")).toBe("1 sa 1 dk");
+  expect(countdown(65, 0, "tr")).toBe("1 dk 5 sn");
+  expect(usd(1_234_567_000n, "tr")).toBe("1.234,57");
+});

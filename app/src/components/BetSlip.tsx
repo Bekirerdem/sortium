@@ -3,6 +3,7 @@ import gsap from "gsap";
 import { parseUnits } from "viem";
 import { EXPLORER, placeBet } from "../lib/chain";
 import { multiplier } from "../lib/format";
+import { useT } from "../lib/i18n";
 import { splitLabel } from "../lib/market";
 import { EASE, reduced, tweenNumber, useMagnetic } from "../lib/motion";
 import type { Wallet } from "../hooks/useWallet";
@@ -22,6 +23,7 @@ type Props = {
 const AMOUNTS = [5, 10, 25, 50];
 
 export function BetSlip({ marketId, label, art, pools, selected, open, wallet, onDone, onToast }: Props) {
+  const t = useT();
   const [amount, setAmount] = useState(25);
   const [busy, setBusy] = useState(false);
   const slip = useRef<HTMLDivElement>(null);
@@ -62,7 +64,7 @@ export function BetSlip({ marketId, label, art, pools, selected, open, wallet, o
           .to(slip.current, { scale: 1, duration: 0.6, ease: EASE.pop })
           .fromTo(ring, { opacity: 1, scale: 1 }, { opacity: 0, scale: 1.12, duration: 0.8, ease: EASE.land }, 0);
       }
-      onToast(`Bet placed on ${title}. View it on Arbiscan.`);
+      onToast(t.slip.placed(title === "Other" ? t.option.other : title));
       window.open(`${EXPLORER}/tx/${hash}`, "_blank", "noopener");
       onDone();
       wallet.refresh();
@@ -78,26 +80,26 @@ export function BetSlip({ marketId, label, art, pools, selected, open, wallet, o
       <span className="ring" />
       {art ? <img src={art} alt="" /> : <span className="ph" />}
       <div className="who">
-        <b>{selected === null ? "Pick an outcome above" : title === "Other" ? "Something else" : title}</b>
+        <b>{selected === null ? t.slip.pick : title === "Other" ? t.option.other : title}</b>
         <span>
-          {selected === null ? "Then choose how much to put in." : <>If you're right you get <em ref={payout}>{value.toFixed(2)}</em> tUSD</>}
-          {tooSmall && " · minimum 1"}
-          {tooBig && " · maximum 500 per market"}
+          {selected === null ? t.slip.then : <>{t.slip.win[0]}<em ref={payout}>{value.toFixed(2)}</em>{t.slip.win[1]}</>}
+          {tooSmall && t.slip.min}
+          {tooBig && t.slip.max}
         </span>
       </div>
-      <div className="amts" role="group" aria-label="Amount">
+      <div className="amts" role="group" aria-label={t.slip.amount}>
         {AMOUNTS.map((a) => (
           <button key={a} aria-pressed={a === amount} onClick={() => setAmount(a)}>{a}</button>
         ))}
-        <input inputMode="decimal" aria-label="Custom amount" value={AMOUNTS.includes(amount) ? "" : amount || ""} placeholder="other"
-          onChange={(e) => setAmount(Number(e.target.value.replace(/[^0-9.]/g, "")) || 0)} />
+        <input inputMode="decimal" aria-label={t.slip.custom} value={AMOUNTS.includes(amount) ? "" : amount || ""} placeholder={t.slip.other}
+          onChange={(e) => setAmount(Number(e.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "")) || 0)} />
       </div>
       {wallet.address ? (
         <button ref={go} className="btn dark" disabled={busy || selected === null || tooSmall || tooBig} onClick={submit}>
-          {busy ? "Confirm in wallet" : `Bet ${amount || 0} tUSD`}
+          {busy ? t.slip.confirm : t.slip.bet(amount || 0)}
         </button>
       ) : (
-        <button ref={go} className="btn dark" onClick={wallet.login}>Connect wallet</button>
+        <button ref={go} className="btn dark" onClick={wallet.login}>{t.wallet.connect}</button>
       )}
     </div>
   );

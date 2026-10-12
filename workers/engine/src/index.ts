@@ -55,10 +55,12 @@ export default {
   async fetch(req: Request, env: WEnv): Promise<Response> {
     const url = new URL(req.url);
     const origin = req.headers.get("origin") ?? "";
-    const host = env.APP_ORIGIN.replace(/^https:\/\//, "");
-    const allowed = origin === env.APP_ORIGIN || origin.endsWith(`.${host}`) || origin.startsWith("http://localhost:");
+    // APP_ORIGIN lists the app's origins, primary first; preview deploys live on subdomains of each
+    const apps = env.APP_ORIGIN.split(",").map((s) => s.trim());
+    const allowed = origin.startsWith("http://localhost:") ||
+      apps.some((a) => origin === a || origin.endsWith(`.${a.replace(/^https:\/\//, "")}`));
     const cors: Record<string, string> = {
-      "access-control-allow-origin": allowed ? origin : env.APP_ORIGIN,
+      "access-control-allow-origin": allowed ? origin : apps[0],
       vary: "origin",
       "access-control-allow-methods": "GET,POST,OPTIONS",
       "access-control-allow-headers": "content-type",

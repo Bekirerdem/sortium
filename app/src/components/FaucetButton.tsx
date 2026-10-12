@@ -1,30 +1,29 @@
 import { useState } from "react";
 import { faucet } from "../lib/api";
 import { usd } from "../lib/format";
+import { useLang, useT } from "../lib/i18n";
 import { useMagnetic } from "../lib/motion";
 import type { Wallet } from "../hooks/useWallet";
 
-const MESSAGES: Record<string, string> = {
-  "address cooldown": "You already got test dollars today. Come back tomorrow.",
-  "ip cooldown": "This network already used the faucet today. Come back tomorrow.",
-};
-
 export function FaucetButton({ wallet, onToast }: { wallet: Wallet; onToast: (m: string) => void }) {
+  const t = useT();
+  const lang = useLang();
   const [busy, setBusy] = useState(false);
   const ref = useMagnetic<HTMLButtonElement>(0.2);
 
   if (!wallet.address) {
-    return <button ref={ref} className="btn light" onClick={wallet.login}>Connect wallet</button>;
+    return <button ref={ref} className="btn light" onClick={wallet.login}>{t.wallet.connect}</button>;
   }
 
+  const messages: Record<string, string> = { "address cooldown": t.wallet.addressCooldown, "ip cooldown": t.wallet.ipCooldown };
   const get = async () => {
     setBusy(true);
     try {
       const r = await faucet(wallet.address!);
       if (r.ok) {
-        onToast("1,000 test dollars and a little gas are on the way.");
+        onToast(t.wallet.sent);
         setTimeout(wallet.refresh, 4000);
-      } else onToast(MESSAGES[r.error ?? ""] ?? r.error ?? "The faucet didn't answer. Try again in a minute.");
+      } else onToast(messages[r.error ?? ""] ?? r.error ?? t.wallet.faucetDown);
     } finally {
       setBusy(false);
     }
@@ -32,10 +31,10 @@ export function FaucetButton({ wallet, onToast }: { wallet: Wallet; onToast: (m:
 
   return (
     <div className="wallet">
-      <span className="tab">{usd(wallet.balance)} tUSD</span>
+      <span className="tab">{usd(wallet.balance, lang)} tUSD</span>
       {wallet.balance < 5_000000n && (
         <button ref={ref} className="btn light" onClick={get} disabled={busy}>
-          {busy ? "Sending" : "Get 1,000 test dollars"}
+          {busy ? t.wallet.sending : t.wallet.get}
         </button>
       )}
     </div>

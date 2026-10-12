@@ -4,6 +4,7 @@ import type { Wallet } from "../hooks/useWallet";
 import type { ApiMarket } from "../lib/api";
 import { pub } from "../lib/chain";
 import { usd } from "../lib/format";
+import { useLang, useT } from "../lib/i18n";
 import { coverOf } from "../lib/market";
 import { useEntrance, withViewTransition } from "../lib/motion";
 import { displayQuestion } from "../lib/question";
@@ -11,9 +12,11 @@ import { displayQuestion } from "../lib/question";
 type Line = { m: ApiMarket; staked: bigint; claimable: bigint };
 
 export function MyBets({ markets, wallet }: { markets: ApiMarket[]; wallet: Wallet }) {
+  const t = useT();
+  const lang = useLang();
   const [lines, setLines] = useState<Line[] | null>(null);
   const scope = useRef<HTMLDivElement>(null);
-  useEntrance(scope, [lines?.length ?? -1]);
+  useEntrance(scope, [lines?.length ?? -1, lang]);
 
   useEffect(() => {
     const user = wallet.address;
@@ -41,17 +44,17 @@ export function MyBets({ markets, wallet }: { markets: ApiMarket[]; wallet: Wall
   if (!wallet.address) {
     return (
       <div ref={scope}>
-        <h1 className="page-title" data-rise>My picks</h1>
-        <button className="btn light" onClick={wallet.login} data-rise>Connect wallet to see your picks</button>
+        <h1 className="page-title" data-rise>{t.me.title}</h1>
+        <button className="btn light" onClick={wallet.login} data-rise>{t.me.connect}</button>
       </div>
     );
   }
 
   return (
     <div ref={scope}>
-      <h1 className="page-title" data-rise>My picks</h1>
-      {!lines && <p className="loading">Reading your picks from the chain</p>}
-      {lines?.length === 0 && <p className="empty">No picks yet. Today's big market is a good place to start.</p>}
+      <h1 className="page-title" data-rise>{t.me.title}</h1>
+      {!lines && <p className="loading">{t.me.reading}</p>}
+      {lines?.length === 0 && <p className="empty">{t.me.empty}</p>}
       <div className="picks">
         {lines?.map(({ m, staked, claimable }) => {
           const cover = coverOf(m);
@@ -59,9 +62,9 @@ export function MyBets({ markets, wallet }: { markets: ApiMarket[]; wallet: Wall
             <a key={m.id} className="pick-row" href={`#/m/${m.id}`} data-rise
               onClick={(e) => { e.preventDefault(); withViewTransition(() => (location.hash = `#/m/${m.id}`)); }}>
               {cover ? <img src={cover} alt="" /> : <span className="ph" />}
-              <div><div className="q">{displayQuestion(m)}</div><div className="s tab">{usd(staked)} tUSD in</div></div>
-              <span className="s">{m.status === "open" ? "Open" : m.status === "settled" ? "Decided" : m.status === "void" ? "Refunded" : "Being checked"}</span>
-              <span className="btn ghost">{claimable > 0n ? `Collect ${usd(claimable)}` : "View"}</span>
+              <div><div className="q">{displayQuestion(m, { lang })}</div><div className="s tab">{t.me.staked(usd(staked, lang))}</div></div>
+              <span className="s">{t.me.status[m.status === "open" || m.status === "settled" || m.status === "void" ? m.status : "other"]}</span>
+              <span className="btn ghost">{claimable > 0n ? t.me.collect(usd(claimable, lang)) : t.me.view}</span>
             </a>
           );
         })}
