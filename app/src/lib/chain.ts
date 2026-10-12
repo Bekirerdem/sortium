@@ -151,7 +151,6 @@ export async function readCodeHash(templateId: bigint) {
 export const balanceOf = (user: Address) =>
   pub.readContract({ address: ADDRESSES.tusd, abi: testUsdAbi, functionName: "balanceOf", args: [user] });
 
-/** Signs an EIP-2612 permit and bets in a single transaction. */
 /**
  * Fee caps from the latest block. Wallets sometimes quote a max fee under Arbitrum's moving base fee and the node
  * rejects the transaction; a cap of three times the base fee holds, and Arbitrum only charges the actual base fee.
@@ -162,6 +161,7 @@ async function fees() {
   return { maxFeePerGas: base * 3n + 1n, maxPriorityFeePerGas: 0n };
 }
 
+/** Signs an EIP-2612 permit and bets in a single transaction, or approves and bets when the permit would not verify. */
 export async function placeBet(user: Address, id: bigint, outcome: number, amount: bigint) {
   const w = await wallet(user);
   // an earlier approval already covers it: one plain transaction, no signature

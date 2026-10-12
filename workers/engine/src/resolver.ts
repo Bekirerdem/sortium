@@ -29,14 +29,21 @@ export async function runResolver(db: D1Database, chain: Chain, env: Env, public
       outcome = VOID;
     }
     const hash = sha256(toHex(body));
-    await db.prepare("INSERT OR REPLACE INTO snapshots(market_id, fetched_at, sha256, body) VALUES (?, ?, ?, ?)").bind(r.market_id, env.now, hash, body).run();
+    // a re-proposal after a rejected assertion must not erase the evidence the earlier assertion committed to
+    await db.batch([
+      db.prepare("CREATE TABLE IF NOT EXISTS snapshot_archive (market_id INTEGER NOT NULL, fetched_at INTEGER NOT NULL, sha256 TEXT NOT NULL, body TEXT NOT NULL)"),
+      db.prepare("INSERT INTO snapshot_archive SELECT market_id, fetched_at, sha256, body FROM snapshots WHERE market_id = ? AND sha256 != ?").bind(r.market_id, hash),
+      db.prepare("INSERT OR REPLACE INTO snapshots(market_id, fetched_at, sha256, body) VALUES (?, ?, ?, ?)").bind(r.market_id, env.now, hash, body),
+    ]);
     try {
       const tx = await chain.sendPropose(r.market_id, outcome, hash, `${publicUrl}/api/evidence/${r.market_id}`);
       budget.sends -= 1;
       await db.prepare("UPDATE markets SET status = 'proposing', tx_hash = ? WHERE draft_key = ?").bind(tx, r.draft_key).run();
       console.log("sent propose", r.market_id, outcome, tx);
     } catch (e) {
+      // propose is permissionless: if someone else already asserted, follow the chain instead of retrying forever
       console.error("propose", r.market_id, String(e).slice(0, 300));
+      await syncState(db, chain, r).catch(() => {});
     }
   }
 }
@@ -60,7 +67,12 @@ export async function runSettle(db: D1Database, chain: Chain, now: number, budge
   const { results } = await db.prepare("SELECT * FROM markets WHERE status = 'proposed' LIMIT 8").all<Row>();
   for (const r of results) {
     if (budget.sends <= 0) return;
-    if (!dueForSettle(r, now) || !r.assertion_id) continue;
+    // asserted by someone else: we hold no assertion id, so just follow the market until it settles or voids
+    if (!r.assertion_id) {
+      await syncState(db, chain, r).catch(() => {});
+      continue;
+    }
+    if (!dueForSettle(r, now)) continue;
     try {
       const tx = await chain.sendSettle(r.assertion_id as Hex);
       budget.sends -= 1;
