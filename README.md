@@ -4,7 +4,7 @@ Prediction games on public internet numbers: which song tops Apple Music in a co
 
 Built for the Colosseum Crypto World's Fair hackathon, Arbitrum track. Testnet only (Arbitrum Sepolia), test dollars only.
 
-- App: https://sortium.pages.dev (English and Turkish)
+- App: https://sortium.pages.dev (English and Turkish), mirror https://sortium.l3ekirerdem.workers.dev for networks that block pages.dev
 - Engine API: https://cwf-engine.l3ekirerdem.workers.dev/api/markets
 - Contracts (Arbitrum Sepolia, chain 421614):
   - PoolMarkets `0x950863296D8d229ee7B847E20B7960E8C7f6C41a`
