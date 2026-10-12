@@ -2,6 +2,7 @@ import { makeChain } from "./chain";
 import { confirmCreations, runFactory } from "./factory";
 import { confirmProposals, confirmSettlements, runResolver, runSettle } from "./resolver";
 import { getEvidence, getMarket, listMarkets } from "./api";
+import { getActivity, getLeaderboard, getStats, indexActivity } from "./activity";
 import { handleFaucet } from "./faucet";
 import { factoryTemplateFor, MAX_SENDS_PER_TICK } from "./logic";
 
@@ -48,6 +49,8 @@ export default {
         await runResolver(env.DB, chain, tenv, env.PUBLIC_URL, budget);
         await runSettle(env.DB, chain, now, budget);
         await runFactory(env.DB, chain, tenv, factoryTemplateFor(now, FACTORY_KEYS), budget);
+        // activity feed is a read model: a failing RPC here must not block markets, the next tick retries
+        await indexActivity(env.DB).catch((e) => console.error("indexActivity", e));
       }),
     );
   },
@@ -71,6 +74,9 @@ export default {
     if (url.pathname === "/api/markets") res = await listMarkets(env.DB, url);
     else if (m?.[1] === "markets") res = await getMarket(env.DB, Number(m[2]), env.YOUTUBE_API_KEY);
     else if (m?.[1] === "evidence") res = await getEvidence(env.DB, Number(m[2]));
+    else if (url.pathname === "/api/activity") res = await getActivity(env.DB, url);
+    else if (url.pathname === "/api/stats") res = await getStats(env.DB);
+    else if (url.pathname === "/api/leaderboard") res = await getLeaderboard(env.DB);
     else if (url.pathname === "/api/faucet" && req.method === "POST") res = await handleFaucet(req, env.DB, makeChain(env.FAUCET_KEY));
     else res = new Response("not found", { status: 404 });
     const out = new Response(res.body, res);

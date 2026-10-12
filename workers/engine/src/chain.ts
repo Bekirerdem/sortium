@@ -128,7 +128,8 @@ export function makeChain(operatorKey: string) {
 
     async drip(to: Hex): Promise<string[]> {
       const a = await send(ADDRESSES.tusd, encodeFunctionData({ abi: testUsdAbi, functionName: "drip", args: [to] }));
-      const b = await send(to, "0x", parseEther("0.002"));
+      // a betWithPermit costs ~162k gas, about 0.0000033 ETH at 0.02 gwei: 0.0003 ETH is ~90 bets, and still 15+ if gas spikes 5x
+      const b = await send(to, "0x", parseEther("0.0003"));
       return [a, b];
     },
   };
