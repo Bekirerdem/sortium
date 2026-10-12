@@ -1,4 +1,4 @@
-# scoreboard — pool bets on the numbers the internet watches
+# Sortium — pick what the internet does next
 
 Prediction games on public internet numbers: which song tops Apple Music in a country tomorrow, which video tops YouTube, how many views a creator's new video gets in 24 hours. A template factory opens the markets automatically, every market is a pool bet, and outcomes are decided by open resolver code reading a public source, posted to UMA's Optimistic Oracle on Arbitrum with a dispute window. No admin decides results.
 
