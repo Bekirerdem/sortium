@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "deploy:deno": "bun run build && rm -rf deno/dist && cp -r dist deno/dist && cd deno && deno deploy --prod",
     "lint": "oxlint",
     "preview": "vite preview"
   },

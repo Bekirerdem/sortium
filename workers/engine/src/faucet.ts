@@ -2,9 +2,12 @@ import type { Chain } from "./chain";
 
 const DAY = 86_400;
 
-export function faucetDecision(byAddr: { last: number } | null, byIp: { last: number } | null, now: number) {
+/** Wallets one network may fund per day: a shared office or event wifi still works, a script farming addresses does not. */
+export const IP_DAILY_CAP = 8;
+
+export function faucetDecision(byAddr: { last: number } | null, ipToday: number, now: number) {
   if (byAddr && now < byAddr.last + DAY) return { ok: false as const, reason: "address cooldown" };
-  if (byIp && now < byIp.last + DAY) return { ok: false as const, reason: "ip cooldown" };
+  if (ipToday >= IP_DAILY_CAP) return { ok: false as const, reason: "ip cooldown" };
   return { ok: true as const };
 }
 
@@ -14,8 +17,8 @@ export async function handleFaucet(req: Request, db: D1Database, chain: Chain): 
   const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
   const now = Math.floor(Date.now() / 1000);
   const byAddr = await db.prepare("SELECT last FROM faucet WHERE address = ?").bind(address.toLowerCase()).first<{ last: number }>();
-  const byIp = await db.prepare("SELECT last FROM faucet WHERE ip = ? ORDER BY last DESC LIMIT 1").bind(ip).first<{ last: number }>();
-  const d = faucetDecision(byAddr, byIp, now);
+  const byIp = await db.prepare("SELECT COUNT(*) AS n FROM faucet WHERE ip = ? AND last > ?").bind(ip, now - DAY).first<{ n: number }>();
+  const d = faucetDecision(byAddr, byIp?.n ?? 0, now);
   if (!d.ok) return Response.json({ ok: false, error: d.reason }, { status: 429 });
   await db.prepare("INSERT OR REPLACE INTO faucet(address, ip, last) VALUES (?, ?, ?)").bind(address.toLowerCase(), ip, now).run();
   try {
