@@ -1,5 +1,6 @@
 import { TEMPLATES } from "@cwf/templates";
 import type { Row } from "./logic";
+import { appleIdsByCountry, lookupApple, withArt } from "./art";
 
 const toApi = (r: Row) => ({
   id: r.market_id,
@@ -26,7 +27,8 @@ export async function listMarkets(db: D1Database, url: URL) {
         ? db.prepare("SELECT * FROM markets WHERE market_id IS NOT NULL ORDER BY market_id DESC LIMIT 200")
         : db.prepare("SELECT * FROM markets WHERE status = ? ORDER BY market_id DESC LIMIT 200").bind(status);
   const { results } = await q.all<Row>();
-  return Response.json({ markets: results.map(toApi) });
+  const markets = results.map(toApi);
+  return Response.json({ markets: withArt(markets, await lookupApple(appleIdsByCountry(markets))) });
 }
 
 async function cachedJson(url: string): Promise<unknown> {
@@ -62,7 +64,8 @@ export async function getMarket(db: D1Database, id: number, youtubeKey?: string)
   } catch {
     // live data is best-effort; the market page still works without it
   }
-  return Response.json({ ...m, live });
+  const [illustrated] = withArt([m], await lookupApple(appleIdsByCountry([m])));
+  return Response.json({ ...illustrated, live });
 }
 
 export async function getEvidence(db: D1Database, id: number) {
