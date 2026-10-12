@@ -203,7 +203,7 @@ export function Home({ markets, wallet, onArt, cat }: { markets: ApiMarket[]; wa
             <Stat value={stats?.openMarkets ?? open.length} label={t.home.stats.open} />
           </div>
         </div>
-        <div id="deck" className="hero-deck" data-cover>
+        <div id="deck" className="hero-deck">
           <p className="deck-note">{t.home.catNote[cat === "soon" || !inCat(cat).length ? "all" : cat]}</p>
           {deck.length > 0 ? <Deck key={cat} markets={deck} wallet={wallet} onArt={onArt} /> : <p className="loading">{t.today.empty}</p>}
         </div>

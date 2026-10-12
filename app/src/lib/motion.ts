@@ -36,7 +36,7 @@ export function useEntrance(scope: RefObject<HTMLElement | null>, deps: unknown[
     if (!root || reduced()) return;
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({ defaults: { ease: EASE.land } });
-      tl.from("[data-word]", { yPercent: 110, duration: 0.9, stagger: 0.035 })
+      tl.from("[data-word]", { yPercent: 110, duration: 1.05, stagger: 0.06 })
         .from("[data-cover]", { scale: 0.86, filter: "blur(18px)", opacity: 0, duration: 1.1 }, 0.1)
         .from("[data-rise]", { y: 28, opacity: 0, duration: 0.8, stagger: 0.05, ease: EASE.pop }, 0.25);
     }, root);

@@ -86,7 +86,12 @@ export function Deck({ markets, wallet, onArt }: Props) {
       const last = root.querySelector(".dback.d2");
       if (last) gsap.from(last, { opacity: 0, scale: 0.9, duration: 0.45, ease: EASE.land });
     } else {
-      gsap.from(el, { y: 24, scale: 0.96, opacity: 0, duration: 0.7, ease: EASE.pop });
+      // first appearance: the stack is dealt in from the lower right, the back card first, the top card last
+      const order = [root.querySelector(".dback.d2"), root.querySelector(".dback.d1"), el].filter(Boolean);
+      // cards turn opaque within the first fifth of their flight, so overlapping faces never show through each other
+      gsap.from(order, { x: 140, y: 260, rotation: 16, duration: 1, stagger: 0.16, delay: 0.35, ease: EASE.pop });
+      gsap.from(order, { opacity: 0, duration: 0.2, stagger: 0.16, delay: 0.35, ease: "none" });
+      gsap.from(el.querySelectorAll(".dmeta, .dchip, .dfoot"), { y: 16, opacity: 0, duration: 0.6, stagger: 0.05, delay: 1.05, ease: EASE.land });
     }
   }, [idx]);
 

@@ -110,7 +110,7 @@ export default function App() {
         {page === "leaders" && <LeadersPage />}
         {page === "me" && markets && <MyBets markets={markets} wallet={wallet} />}
       </main>
-      <Footer />
+      {markets && <Footer />}
       <nav className="tabbar" aria-label="Sortium">
         <a href="#/" onClick={nav("#/")} aria-current={page === "home" ? "page" : undefined}><i className="ti home" aria-hidden />{t.nav.today}</a>
         <a href="#/browse" onClick={nav("#/browse")} aria-current={page === "browse" ? "page" : undefined}><i className="ti grid" aria-hidden />{t.nav.browse}</a>
