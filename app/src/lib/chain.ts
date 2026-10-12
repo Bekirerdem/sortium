@@ -152,6 +152,16 @@ export const balanceOf = (user: Address) =>
   pub.readContract({ address: ADDRESSES.tusd, abi: testUsdAbi, functionName: "balanceOf", args: [user] });
 
 /** Signs an EIP-2612 permit and bets in a single transaction. */
+/**
+ * Fee caps from the latest block. Wallets sometimes quote a max fee under Arbitrum's moving base fee and the node
+ * rejects the transaction; a cap of three times the base fee holds, and Arbitrum only charges the actual base fee.
+ */
+async function fees() {
+  const block = await pub.getBlock();
+  const base = block.baseFeePerGas ?? (await pub.getGasPrice());
+  return { maxFeePerGas: base * 3n + 1n, maxPriorityFeePerGas: 0n };
+}
+
 export async function placeBet(user: Address, id: bigint, outcome: number, amount: bigint) {
   const w = await wallet(user);
   // an earlier approval already covers it: one plain transaction, no signature
@@ -182,7 +192,7 @@ export async function placeBet(user: Address, id: bigint, outcome: number, amoun
       .simulateContract({ account: user, address: ADDRESSES.markets, abi: poolMarketsAbi, functionName: "betWithPermit", args })
       .then(() => true, () => false);
     if (ok) {
-      const hash = await w.writeContract({ address: ADDRESSES.markets, abi: poolMarketsAbi, functionName: "betWithPermit", args });
+      const hash = await w.writeContract({ address: ADDRESSES.markets, abi: poolMarketsAbi, functionName: "betWithPermit", args, ...(await fees()) });
       await pub.waitForTransactionReceipt({ hash });
       return hash;
     }
@@ -197,16 +207,16 @@ async function approveAndBet(user: Address, id: bigint, outcome: number, amount:
   if (allowance < amount) {
     // the whole balance, so a few more picks need no second approval
     const balance = await balanceOf(user);
-    const a = await w.writeContract({ address: ADDRESSES.tusd, abi: testUsdAbi, functionName: "approve", args: [ADDRESSES.markets, balance > amount ? balance : amount] });
+    const a = await w.writeContract({ address: ADDRESSES.tusd, abi: testUsdAbi, functionName: "approve", args: [ADDRESSES.markets, balance > amount ? balance : amount], ...(await fees()) });
     await pub.waitForTransactionReceipt({ hash: a });
   }
-  const hash = await w.writeContract({ address: ADDRESSES.markets, abi: poolMarketsAbi, functionName: "bet", args: [id, outcome, amount] });
+  const hash = await w.writeContract({ address: ADDRESSES.markets, abi: poolMarketsAbi, functionName: "bet", args: [id, outcome, amount], ...(await fees()) });
   await pub.waitForTransactionReceipt({ hash });
   return hash;
 }
 
 export async function claim(user: Address, id: bigint) {
-  const hash = await (await wallet(user)).writeContract({ address: ADDRESSES.markets, abi: poolMarketsAbi, functionName: "claim", args: [id] });
+  const hash = await (await wallet(user)).writeContract({ address: ADDRESSES.markets, abi: poolMarketsAbi, functionName: "claim", args: [id], ...(await fees()) });
   await pub.waitForTransactionReceipt({ hash });
   return hash;
 }
