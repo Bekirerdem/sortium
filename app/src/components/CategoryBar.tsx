@@ -1,10 +1,21 @@
 import { useLayoutEffect, useRef } from "react";
 import gsap from "gsap";
+import type { ApiMarket } from "../lib/api";
 import { useT } from "../lib/i18n";
+import { category } from "../lib/market";
 import { EASE, reduced } from "../lib/motion";
 
 export type Cat = "all" | "music" | "youtube" | "views" | "fast" | "soon";
 export const CATS: Cat[] = ["all", "music", "youtube", "views", "fast", "soon"];
+
+/** Open markets in a category ("soon" holds roadmap cards, not markets). */
+export function inCat(markets: ApiMarket[], c: Cat, now: number): ApiMarket[] {
+  const open = markets.filter((m) => m.status === "open" && m.lockTime > now);
+  return c === "all" ? open : c === "soon" ? [] : open.filter((m) => category(m) === c);
+}
+
+export const catCounts = (markets: ApiMarket[], now: number) =>
+  Object.fromEntries(CATS.filter((c) => c !== "soon").map((c) => [c, inCat(markets, c, now).length])) as Partial<Record<Cat, number>>;
 
 /** Category strip with a pill that slides to the active category; counts show what is open in each. */
 export function CategoryBar({ value, counts, onChange }: { value: Cat; counts: Partial<Record<Cat, number>>; onChange: (c: Cat) => void }) {

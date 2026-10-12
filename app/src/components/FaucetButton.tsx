@@ -63,6 +63,7 @@ export function FaucetButton({ wallet, onToast }: { wallet: Wallet; onToast: (m:
         <div className="menu" role="menu">
           <div className="addr">{shortAddr(wallet.address)}{wallet.kind === "instant" && <span>{t.picker.menuInstant}</span>}</div>
           {wallet.kind === "injected" && <button role="menuitem" onClick={() => { setMenu(false); watchToken().catch(() => {}); }}>{t.home.tokenAdd}</button>}
+          <button role="menuitem" disabled={busy} onClick={() => { setMenu(false); get(); }}>{t.wallet.get}</button>
           <button role="menuitem" onClick={() => { setMenu(false); wallet.logout(); }}>{t.picker.logout}</button>
         </div>
       )}

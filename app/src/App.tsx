@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Backdrop } from "./components/Backdrop";
 import { FaucetButton } from "./components/FaucetButton";
 import { Footer } from "./components/Footer";
+import { CategoryBar, catCounts, type Cat } from "./components/CategoryBar";
+import { useNow } from "./hooks/useNow";
 import { WalletPicker } from "./components/WalletPicker";
 import { useMarkets } from "./hooks/useMarkets";
 import { usePoll } from "./hooks/usePoll";
@@ -47,6 +49,16 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [art, setArt] = useState<string | undefined>();
   const onArt = useCallback((a?: string) => a && setArt(a), []);
+  const [cat, setCat] = useState<Cat>("all");
+  const now = useNow(15_000);
+  // the header turns to glass once the page moves under it
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const on = () => setScrolled(window.scrollY > 8);
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    return () => window.removeEventListener("scroll", on);
+  }, []);
 
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -68,19 +80,24 @@ export default function App() {
   return (
     <>
       <Backdrop art={art} />
-      <header className="top">
-        <a className="logo" href="#/" onClick={nav("#/")}><span className="mark" aria-hidden />Sortium</a>
-        <nav className="nav">
-          <a href="#/browse" onClick={nav("#/browse")} aria-current={page === "browse" ? "page" : undefined}>{t.nav.browse}</a>
-          <a href="#/leaders" onClick={nav("#/leaders")} aria-current={page === "leaders" ? "page" : undefined}>{t.nav.leaders}</a>
-          <a href="#/me" onClick={nav("#/me")} aria-current={page === "me" ? "page" : undefined}>{t.nav.me}</a>
-        </nav>
-        <div className="lang" role="group" aria-label={t.lang.label}>
-          {(["tr", "en"] as const).map((l) => (
-            <button key={l} aria-pressed={lang === l} onClick={() => withViewTransition(() => setLang(l))}>{l.toUpperCase()}</button>
-          ))}
+      <header className={`hdr${scrolled ? " scrolled" : ""}`}>
+        <div className="top">
+          <a className="logo" href="#/" onClick={nav("#/")}><span className="mark" aria-hidden />Sortium</a>
+          <nav className="nav">
+            <a href="#/browse" onClick={nav("#/browse")} aria-current={page === "browse" ? "page" : undefined}>{t.nav.browse}</a>
+            <a href="#/leaders" onClick={nav("#/leaders")} aria-current={page === "leaders" ? "page" : undefined}>{t.nav.leaders}</a>
+            <a href="#/me" onClick={nav("#/me")} aria-current={page === "me" ? "page" : undefined}>{t.nav.me}</a>
+          </nav>
+          <div className="lang" role="group" aria-label={t.lang.label}>
+            {(["tr", "en"] as const).map((l) => (
+              <button key={l} aria-pressed={lang === l} onClick={() => withViewTransition(() => setLang(l))}>{l.toUpperCase()}</button>
+            ))}
+          </div>
+          <FaucetButton wallet={wallet} onToast={setToast} />
         </div>
-        <FaucetButton wallet={wallet} onToast={setToast} />
+        {page === "home" && markets && (
+          <div className="top-cats"><CategoryBar value={cat} counts={catCounts(markets, now)} onChange={setCat} /></div>
+        )}
       </header>
       <main>
         {error && !markets && <p className="err">{t.engineDown}</p>}
@@ -88,12 +105,18 @@ export default function App() {
           <Market key={route![1]} id={Number(route![1])} initialPick={route![2] ? Number(route![2]) : null} wallet={wallet} markets={markets} onToast={setToast} onArt={onArt} />
         )}
         {page !== "market" && page !== "leaders" && !markets && !error && <p className="loading">{t.loadingMarkets}</p>}
-        {page === "home" && markets && <Home markets={markets} wallet={wallet} onArt={onArt} />}
+        {page === "home" && markets && <Home markets={markets} wallet={wallet} onArt={onArt} cat={cat} />}
         {page === "browse" && markets && <Browse markets={markets} />}
         {page === "leaders" && <LeadersPage />}
         {page === "me" && markets && <MyBets markets={markets} wallet={wallet} />}
       </main>
       <Footer />
+      <nav className="tabbar" aria-label="Sortium">
+        <a href="#/" onClick={nav("#/")} aria-current={page === "home" ? "page" : undefined}><i className="ti home" aria-hidden />{t.nav.today}</a>
+        <a href="#/browse" onClick={nav("#/browse")} aria-current={page === "browse" ? "page" : undefined}><i className="ti grid" aria-hidden />{t.nav.browse}</a>
+        <a href="#/leaders" onClick={nav("#/leaders")} aria-current={page === "leaders" ? "page" : undefined}><i className="ti cup" aria-hidden />{t.nav.leaders}</a>
+        <a href="#/me" onClick={nav("#/me")} aria-current={page === "me" ? "page" : undefined}><i className="ti me" aria-hidden />{t.nav.me}</a>
+      </nav>
       <WalletPicker wallet={wallet} />
       {toast && <div className="toast" role="status">{toast}</div>}
     </>

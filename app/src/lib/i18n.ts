@@ -52,7 +52,7 @@ export const TR_COUNTRY: Record<string, [string, string]> = {
 };
 
 const en = {
-  nav: { today: "Today", browse: "Markets", me: "My picks", leaders: "Leaderboard" },
+  nav: { today: "Home", browse: "Markets", me: "My picks", leaders: "Leaderboard" },
   home: {
     title: "Call what the internet does next.",
     sub: "Which song tops Apple Music tomorrow? Which video trends on YouTube? Put test dollars on your pick. Everyone who's right splits the pool, and open code reads the result from the official chart.",
@@ -268,7 +268,7 @@ const en = {
 type Dict = typeof en;
 
 const tr: Dict = {
-  nav: { today: "Bugün", browse: "Marketler", me: "Tahminlerim", leaders: "Sıralama" },
+  nav: { today: "Ana sayfa", browse: "Marketler", me: "Tahminlerim", leaders: "Sıralama" },
   home: {
     title: "İnternetin bir sonraki hamlesini tahmin et.",
     sub: "Yarın Apple Music'te hangi şarkı zirvede olacak? YouTube'da hangi video trend olacak? Tahminine test doları koy. Bilen herkes havuzu paylaşır, sonucu resmi listeden açık kod okur.",

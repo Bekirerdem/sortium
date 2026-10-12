@@ -3,7 +3,7 @@ import gsap from "gsap";
 import { ADDRESSES } from "@cwf/templates";
 import { Deck } from "../components/Deck";
 import { Headline } from "../components/Headline";
-import { CATS, CategoryBar, type Cat } from "../components/CategoryBar";
+import { inCat as inCatOf, type Cat } from "../components/CategoryBar";
 import { MarketCard } from "../components/MarketCard";
 import { useNow } from "../hooks/useNow";
 import { usePoll } from "../hooks/usePoll";
@@ -12,7 +12,7 @@ import { getActivity, getLeaders, getStats, type Activity, type ApiMarket, type 
 import { EXPLORER, watchToken } from "../lib/chain";
 import { avatar, compactNum, shortAddr, usd } from "../lib/format";
 import { ago, useLang, useT } from "../lib/i18n";
-import { artFor, category, coverOf, splitLabel } from "../lib/market";
+import { artFor, coverOf, splitLabel } from "../lib/market";
 import { EASE, reduced, tweenNumber, useEntrance, useMagnetic, useReveal, withViewTransition } from "../lib/motion";
 import { displayOutcome, displayQuestion } from "../lib/question";
 
@@ -145,7 +145,7 @@ export function Leaders({ items, full }: { items: Leader[] | null; full?: boolea
 
 type Sort = "closing" | "pool" | "fresh";
 
-export function Home({ markets, wallet, onArt }: { markets: ApiMarket[]; wallet: Wallet; onArt: (a?: string) => void }) {
+export function Home({ markets, wallet, onArt, cat }: { markets: ApiMarket[]; wallet: Wallet; onArt: (a?: string) => void; cat: Cat }) {
   const t = useT();
   const lang = useLang();
   const now = useNow(15_000);
@@ -154,15 +154,13 @@ export function Home({ markets, wallet, onArt }: { markets: ApiMarket[]; wallet:
   const stats = usePoll(getStats, 20_000);
   const activity = usePoll(() => getActivity(30), 12_000);
   const leaders = usePoll(getLeaders, 30_000);
-  const [cat, setCat] = useState<Cat>("all");
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<Sort>("closing");
   useEntrance(scope, [lang]);
   useReveal(scope, [lang, activity === null, leaders === null]);
 
   const open = markets.filter((m) => m.status === "open" && m.lockTime > now);
-  const inCat = (c: Cat) => (c === "all" ? open : c === "soon" ? [] : open.filter((m) => category(m) === c));
-  const counts = Object.fromEntries(CATS.filter((c) => c !== "soon").map((c) => [c, inCat(c).length])) as Partial<Record<Cat, number>>;
+  const inCat = (c: Cat) => inCatOf(markets, c, now);
   // the deck follows the category; empty categories fall back to everything so the hero never goes blank
   const deckSource = inCat(cat).length ? inCat(cat) : open;
   const deck = cat === "all" ? deckMarkets(open) : deckSource;
@@ -179,15 +177,16 @@ export function Home({ markets, wallet, onArt }: { markets: ApiMarket[]; wallet:
     document.getElementById("deck")?.scrollIntoView({ behavior: reduced() ? "auto" : "smooth", block: "center" });
   };
 
-  const pickCat = (c: Cat) => {
-    setCat(c);
+  // a new category deals its cards in
+  const firstCat = useRef(true);
+  useEffect(() => {
+    if (firstCat.current) { firstCat.current = false; return; }
     const g = document.getElementById("grid");
     if (g && !reduced()) gsap.fromTo(g.children, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, stagger: 0.03, ease: EASE.land });
-  };
+  }, [cat]);
 
   return (
     <div ref={scope}>
-      <div className="cats-wrap"><CategoryBar value={cat} counts={counts} onChange={pickCat} /></div>
 
       <section className="hero">
         <div className="hero-copy">
