@@ -4,6 +4,8 @@ import { countdown } from "../lib/format";
 
 export const family = (key: string) => (key.startsWith("YT") ? "YouTube" : "Music");
 
+const HERO_ORDER = ["us", "tr", "gb", "kr", "br", "jp", "de", "fr", "mx", "in"];
+
 function useNow() {
   const [now, setNow] = useState(Date.now() / 1000);
   useEffect(() => {
@@ -38,7 +40,12 @@ export function MarketRow({ m, now }: { m: ApiMarket; now: number }) {
 export function Today({ markets }: { markets: ApiMarket[] }) {
   const now = useNow();
   const open = markets.filter((m) => m.status === "open" && m.lockTime > now).sort((a, b) => a.lockTime - b.lockTime);
-  const hero = open.find((m) => !m.demo) ?? open[0];
+  // markets share lock times, so break ties toward the storefronts most visitors recognise
+  const rank = (m: ApiMarket) => {
+    const i = HERO_ORDER.indexOf(m.entity.toLowerCase());
+    return i === -1 ? HERO_ORDER.length : i;
+  };
+  const hero = [...open].filter((m) => !m.demo).sort((a, b) => a.lockTime - b.lockTime || rank(a) - rank(b))[0] ?? open[0];
   const rest = open.filter((m) => m !== hero);
   const settled = markets.filter((m) => m.status === "settled" || m.status === "void" || m.status === "proposed").slice(0, 6);
 

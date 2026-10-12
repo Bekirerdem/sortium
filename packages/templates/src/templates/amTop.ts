@@ -30,7 +30,19 @@ export function nextResolve(now: number): number {
   return t;
 }
 
-const utc = (t: number) => new Date(t * 1000).toISOString().slice(0, 16).replace("T", " ");
+const COUNTRY: Record<string, string> = {
+  tr: "Türkiye", us: "the United States", kr: "South Korea", br: "Brazil", jp: "Japan", de: "Germany",
+  gb: "the UK", fr: "France", mx: "Mexico", in: "India",
+};
+export const countryName = (cc: string) => COUNTRY[cc.toLowerCase()] ?? cc.toUpperCase();
+
+/** "Which song will top Apple Music in Türkiye on Oct 13 (12:00 UTC)?"; demo markets name the minute instead of the day. */
+export function chartQuestion(item: string, chart: string, cc: string, resolveTime: number, demo: boolean): string {
+  const d = new Date(resolveTime * 1000);
+  const hhmm = d.toISOString().slice(11, 16);
+  const when = demo ? `at ${hhmm} UTC` : `on ${d.toLocaleString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })} (${hhmm} UTC)`;
+  return `${demo ? "[demo] " : ""}Which ${item} will top ${chart} in ${countryName(cc)} ${when}?`;
+}
 
 function make(key: string, demo: boolean, countries: readonly string[]): Template {
   const windowKey = (now: number) =>
@@ -63,7 +75,7 @@ function make(key: string, demo: boolean, countries: readonly string[]): Templat
           templateKey: key,
           entity: cc,
           windowKey: windowKey(env.now),
-          question: `${demo ? "[demo] " : ""}Which song will be #1 on Apple Music ${cc.toUpperCase()} at ${utc(resolveTime)} UTC?`,
+          question: chartQuestion("song", "Apple Music", cc, resolveTime, demo),
           outcomes: [...candidates.map((c) => c.label), "Other"],
           lockTime,
           resolveTime,

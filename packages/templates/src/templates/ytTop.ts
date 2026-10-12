@@ -1,5 +1,5 @@
 import { resolveYtTop } from "../resolve/ytTop";
-import { nextResolve } from "./amTop";
+import { chartQuestion, nextResolve } from "./amTop";
 import type { Env, MarketDraft, Template } from "../types";
 
 const REGIONS = ["TR", "US", "KR", "BR", "IN", "JP", "DE", "GB"] as const;
@@ -14,7 +14,6 @@ async function fetchChart(region: string, key: string, n: number): Promise<Chart
   return (await res.json()) as Chart;
 }
 
-const utc = (t: number) => new Date(t * 1000).toISOString().slice(0, 16).replace("T", " ");
 
 export const ytTop: Template = {
   key: "YT_TOP_COUNTRY",
@@ -31,13 +30,20 @@ export const ytTop: Template = {
     const out: MarketDraft[] = [];
     for (const region of REGIONS) {
       const resolveTime = nextResolve(env.now);
-      const chart = await fetchChart(region, env.YOUTUBE_API_KEY, 7);
+      let chart: Chart;
+      try {
+        chart = await fetchChart(region, env.YOUTUBE_API_KEY, 7);
+      } catch (e) {
+        console.error(String(e)); // one region failing must not block the others
+        continue;
+      }
+      if (chart.items.length < 2) continue;
       const candidates = chart.items.map((v) => ({ id: v.id, label: `${v.snippet.channelTitle} – ${v.snippet.title}`.slice(0, 120) }));
       out.push({
         templateKey: "YT_TOP_COUNTRY",
         entity: region,
         windowKey: new Date(resolveTime * 1000).toISOString().slice(0, 10),
-        question: `Which video will be #1 on YouTube ${region} at ${utc(resolveTime)} UTC?`,
+        question: chartQuestion("video", "YouTube", region, resolveTime, false),
         outcomes: [...candidates.map((c) => c.label), "Other"],
         lockTime: resolveTime - 12 * 3600,
         resolveTime,

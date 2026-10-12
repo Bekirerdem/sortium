@@ -23,6 +23,13 @@ test("planned keys are computable without fetching and match the draft key forma
   expect(TEMPLATES.YT_TOP_COUNTRY.plannedKeys!({ now })).toEqual([]);
 });
 
+test("questions read like a person wrote them", async () => {
+  const { chartQuestion } = await import("../src/templates/amTop");
+  const noon = Date.UTC(2026, 9, 13, 12, 0, 0) / 1000;
+  expect(chartQuestion("song", "Apple Music", "tr", noon, false)).toBe("Which song will top Apple Music in Türkiye on Oct 13 (12:00 UTC)?");
+  expect(chartQuestion("video", "YouTube", "US", noon + 3300, true)).toBe("[demo] Which video will top YouTube in the United States at 12:55 UTC?");
+});
+
 test("YouTube templates produce nothing without an API key", async () => {
   const env = { now: 1_800_000_000 };
   expect(await TEMPLATES.YT_TOP_COUNTRY.drafts(env)).toEqual([]);
