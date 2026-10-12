@@ -7,94 +7,119 @@ import type { ApiMarket } from "../lib/api";
 import { countdown, multiplier } from "../lib/format";
 import { useLang, useT } from "../lib/i18n";
 import { artFor, coverOf, family, splitLabel } from "../lib/market";
-import { EASE, reduced, useMagnetic, useTilt, withViewTransition } from "../lib/motion";
+import { EASE, reduced, useMagnetic, withViewTransition } from "../lib/motion";
 import { displayQuestion } from "../lib/question";
 
 type Props = { markets: ApiMarket[]; wallet: Wallet; onArt: (a?: string) => void };
 
+/** The first four outcomes in chart order (current #1 first); "Other" stays on the market page. */
+const shownOf = (m: ApiMarket) => m.outcomes.map((_, i) => i).filter((i) => m.outcomes[i] !== "Other").slice(0, 4);
+
+/** One card's face. The cards waiting in the stack use the same face, so the one that moves up already looks right. */
+function Face({ m, pools, pick, onPick, now }: { m: ApiMarket; pools: bigint[] | null; pick: number | null; onPick?: (i: number) => void; now: number }) {
+  const t = useT();
+  const lang = useLang();
+  const focus = pick ?? shownOf(m)[0] ?? 0;
+  const cover = artFor(m.meta, focus) ?? coverOf(m);
+  return (
+    <>
+      <div className="dtop">
+        <div className="dcover">{cover && <img src={cover} alt="" />}</div>
+        <div className="dmeta">
+          <span className="dfam">{family(m.templateKey) === "YouTube" ? t.family.youtube : t.family.music}<i />{t.tile.closesIn(countdown(m.lockTime, now, lang))}</span>
+          <h3>{displayQuestion(m, { short: true, lang })}</h3>
+        </div>
+      </div>
+      <div className="dchips">
+        {shownOf(m).map((i) => {
+          const { title, by } = splitLabel(m.outcomes[i]);
+          const x = pools ? multiplier(pools, i) : 0;
+          return (
+            <button key={i} className="dchip" aria-pressed={pick === i} tabIndex={onPick ? 0 : -1} onClick={() => onPick?.(i)}>
+              {artFor(m.meta, i) ? <img src={artFor(m.meta, i)} alt="" /> : <span className="ph" />}
+              <span className="dt"><b>{title}</b><span>{by}</span></span>
+              <span className="dm tab">{!pools ? "" : x > 0 ? `×${x.toFixed(2)}` : t.option.fresh}</span>
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
 /** The home page's hands-on moment: a stack of live markets you can flip through and pick from without leaving the page. */
 export function Deck({ markets, wallet, onArt }: Props) {
   const t = useT();
-  const lang = useLang();
   const now = useNow();
   const [idx, setIdx] = useState(0);
   const [pick, setPick] = useState<number | null>(null);
   const card = useRef<HTMLDivElement>(null);
-  const busy = useRef(false);
   const stack = useRef<HTMLDivElement>(null);
+  const busy = useRef(false);
   const entering = useRef<0 | 1 | -1>(0);
   const swipe = useRef<number | null>(null);
-  const tilt = useTilt<HTMLDivElement>(6);
   const cta = useMagnetic<HTMLAnchorElement>(0.2);
 
-  const m = markets[idx % markets.length];
+  const n = markets.length;
+  const m = markets[idx % n];
   const { chain } = useMarket(m.id, wallet.address);
-  const pools = chain?.pools ?? m.outcomes.map(() => 0n);
-  const total = pools.reduce((a, b) => a + b, 0n);
-  // the four most backed outcomes, or the chart's own order while the pool is empty
-  const shown = pools.map((_, i) => i).filter((i) => m.outcomes[i] !== "Other")
-    .sort((a, b) => (total === 0n ? a - b : pools[b] > pools[a] ? 1 : pools[b] < pools[a] ? -1 : a - b)).slice(0, 4);
-  const focus = pick ?? shown[0] ?? 0;
+  const pools = chain?.pools ?? null;
+  const focus = pick ?? shownOf(m)[0] ?? 0;
   const cover = artFor(m.meta, focus) ?? coverOf(m);
-
   useEffect(() => onArt(cover), [cover, onArt]);
 
-  // after the swap the stack is re-rendered in its resting places; only the incoming card's content still has to arrive
+  // after a swap React renders the stack in its resting places; only arrivals are animated here
   useLayoutEffect(() => {
     const el = card.current;
+    const root = stack.current;
     const dir = entering.current;
     entering.current = 0;
-    if (!el || reduced()) return;
-    const backs = [...(stack.current?.querySelectorAll<HTMLElement>(".dback") ?? [])];
-    // cards that moved up keep their React element; hand their position back to the stylesheet
-    gsap.set(backs, { clearProps: "transform,opacity" });
-    gsap.set(backs.map((b) => b.querySelector("img")), { clearProps: "filter" });
+    if (!el || !root || reduced()) return;
+    const backs = [...root.querySelectorAll<HTMLElement>(".dback")];
+    gsap.set([el, ...backs], { clearProps: "transform,opacity" });
+    gsap.set(root.querySelectorAll(".dshade"), { clearProps: "opacity" });
     if (dir === -1) {
-      // going back: the previous card slides in from the left, on top of the stack
-      gsap.fromTo(el, { x: -160, y: 0, scale: 1, rotation: -8, opacity: 0 }, { x: 0, rotation: 0, opacity: 1, duration: 0.55, ease: EASE.pop });
-    } else if (dir === 0) {
-      gsap.fromTo(el, { x: 0, y: 24, scale: 0.95, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: 0.7, ease: EASE.pop });
+      gsap.fromTo(el, { x: -el.offsetWidth * 0.9, y: 40, rotation: -16 }, { x: 0, y: 0, rotation: 0, duration: 0.6, ease: EASE.pop });
+      const shade = root.querySelector(".d1 .dshade");
+      if (shade) gsap.from(shade, { opacity: 0, duration: 0.45 });
+    } else if (dir === 1) {
+      const last = root.querySelector(".dback.d2");
+      if (last) gsap.from(last, { opacity: 0, scale: 0.9, duration: 0.45, ease: EASE.land });
     } else {
-      gsap.set(el, { x: 0, y: 0, rotation: 0, scale: 1, opacity: 1 });
-      const last = stack.current?.querySelector(".d2");
-      if (last) gsap.from(last, { opacity: 0, scale: 0.9, duration: 0.5, ease: EASE.land, clearProps: "opacity,transform" });
+      gsap.from(el, { y: 24, scale: 0.96, opacity: 0, duration: 0.7, ease: EASE.pop });
     }
-    gsap.fromTo(el.querySelectorAll(".dmeta, .dchip, .dfoot"), { y: 12, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, stagger: 0.04, ease: EASE.land });
   }, [idx]);
 
   const go = (dir: 1 | -1) => {
-    if (busy.current || markets.length < 2) return;
-    const next = () => { entering.current = dir; setPick(null); setIdx((i) => (i + dir + markets.length) % markets.length); };
+    if (busy.current || n < 2) return;
+    const next = () => { entering.current = dir; setPick(null); setIdx((i) => (i + dir + n) % n); };
     const el = card.current;
-    if (!el || reduced()) return next();
+    const root = stack.current;
+    if (!el || !root || reduced()) return next();
     busy.current = true;
-    const done = () => { busy.current = false; next(); };
-    const tl = gsap.timeline({ onComplete: done });
+    const tl = gsap.timeline({ onComplete: () => { busy.current = false; next(); } });
+    const d1 = root.querySelector<HTMLElement>(".dback.d1");
+    const d2 = root.querySelector<HTMLElement>(".dback.d2");
     if (dir === 1) {
-      // the top card is flung off, every card behind it moves up one place
-      tl.to(el, { x: -180, y: 20, rotation: -12, opacity: 0, duration: 0.42, ease: "power2.in" }, 0);
-      const d1 = stack.current?.querySelector<HTMLElement>(".d1");
-      const d2 = stack.current?.querySelector<HTMLElement>(".d2");
-      // second card takes the first one's resting place, read from the stylesheet so mobile offsets hold too
+      // top card is flung off; every card behind moves up exactly one place, read from the stylesheet so mobile offsets hold
       const d1Rest = d1 ? getComputedStyle(d1).transform : "none";
-      if (d1) tl.to(d1, { x: 0, y: 0, rotation: 0, scale: 1, duration: 0.5, ease: EASE.land }, 0.08);
-      if (d1) tl.to(d1.querySelector("img"), { filter: "blur(0px) brightness(1) saturate(1)", duration: 0.5 }, 0.08);
-      if (d2) tl.to(d2, { transform: d1Rest, opacity: 1, duration: 0.5, ease: EASE.land }, 0.08);
+      // stays opaque while it covers the next card, fades only once it is mostly off
+      tl.to(el, { x: -el.offsetWidth * 0.9, y: 40, rotation: -16, duration: 0.5, ease: "power2.in" }, 0)
+        .to(el, { opacity: 0, duration: 0.14 }, 0.36);
+      if (d1) tl.to(d1, { transform: "none", duration: 0.55, ease: EASE.land }, 0.1).to(d1.querySelector(".dshade"), { opacity: 0, duration: 0.55 }, 0.1);
+      if (d2) tl.to(d2, { transform: d1Rest, duration: 0.55, ease: EASE.land }, 0.1).to(d2.querySelector(".dshade"), { opacity: 0.35, duration: 0.55 }, 0.1);
     } else {
-      // going back: the top card steps down into the stack before the previous one lands on top
-      tl.to(el, { x: 22, y: -14, rotation: 3.5, scale: 0.97, opacity: 0, duration: 0.32, ease: "power2.in" }, 0);
+      // going back: the top card steps down into the first slot, the previous one will land on top
+      const d1Rest = d1 ? getComputedStyle(d1).transform : "translate(22px,-14px) rotate(3.5deg) scale(0.97)";
+      tl.to(el, { transform: d1Rest, duration: 0.3, ease: "power2.in" }, 0);
+      if (d1 && d2) tl.to(d1, { transform: getComputedStyle(d2).transform, duration: 0.3, ease: "power2.in" }, 0);
+      if (d2) tl.to(d2, { opacity: 0, duration: 0.3 }, 0);
     }
   };
 
-  const choose = (i: number) => {
-    setPick(i);
-    const img = card.current?.querySelector<HTMLImageElement>(".dcover img");
-    if (img && !reduced()) gsap.fromTo(img, { scale: 1.12, filter: "blur(8px)" }, { scale: 1, filter: "blur(0px)", duration: 0.6, ease: EASE.land });
-  };
-
   const href = `#/m/${m.id}${pick !== null ? `?pick=${pick}` : ""}`;
-  const mult = pick !== null ? multiplier(pools, pick, 10_000000n) : 0;
-  const behind = [1, 2].map((k) => markets[(idx + k) % markets.length]).filter((x) => markets.length > 1 && x !== m);
+  const mult = pick !== null && pools ? multiplier(pools, pick, 10_000000n) : 0;
+  const behind = n > 1 ? [1, 2].slice(0, Math.min(2, n - 1)).map((k) => markets[(idx + k) % n]) : [];
 
   return (
     <div className="deck"
@@ -108,42 +133,26 @@ export function Deck({ markets, wallet, onArt }: Props) {
       onKeyDown={(e) => { if (e.key === "ArrowRight") go(1); if (e.key === "ArrowLeft") go(-1); }}
     >
       <div className="dstack" ref={stack}>
-      {behind.map((b, k) => (
-        <div key={b.id} className={`dback d${k + 1}`} aria-hidden>{coverOf(b) && <img src={coverOf(b)} alt="" />}</div>
-      )).reverse()}
-      <div className="dcard" ref={card}>
-        <div className="dtop">
-          <div className="dcover" ref={tilt} style={{ viewTransitionName: `cover-${m.id}` }}>{cover && <img src={cover} alt="" />}</div>
-          <div className="dmeta">
-            <span className="dfam">{family(m.templateKey) === "YouTube" ? t.family.youtube : t.family.music}<i />{t.tile.closesIn(countdown(m.lockTime, now, lang))}</span>
-            <h3>{displayQuestion(m, { short: true, lang })}</h3>
+        {behind.map((b, k) => (
+          <div key={b.id} className={`dback d${k + 1}`} aria-hidden>
+            <Face m={b} pools={null} pick={null} now={now} />
+            <span className="dshade" />
+          </div>
+        )).reverse()}
+        <div className="dcard" ref={card}>
+          <Face m={m} pools={pools} pick={pick} onPick={setPick} now={now} />
+          <div className="dfoot">
+            <a ref={cta} className="btn light" href={href} onClick={(e) => { e.preventDefault(); withViewTransition(() => (location.hash = href)); }}>
+              {pick === null ? t.today.cta : t.home.deckCta}
+            </a>
+            <span className="dhint">{pick === null ? t.home.deckHint : mult > 0 ? t.home.deckPays(`×${mult.toFixed(2)}`) : t.home.deckFresh}</span>
           </div>
         </div>
-        <div className="dchips">
-          {shown.map((i) => {
-            const { title, by } = splitLabel(m.outcomes[i]);
-            const x = multiplier(pools, i);
-            return (
-              <button key={i} className="dchip" aria-pressed={pick === i} onClick={() => choose(i)}>
-                {artFor(m.meta, i) ? <img src={artFor(m.meta, i)} alt="" /> : <span className="ph" />}
-                <span className="dt"><b>{title}</b><span>{by}</span></span>
-                <span className="dm tab">{x > 0 ? `×${x.toFixed(2)}` : t.option.fresh}</span>
-              </button>
-            );
-          })}
-        </div>
-        <div className="dfoot">
-          <a ref={cta} className="btn light" href={href} onClick={(e) => { e.preventDefault(); withViewTransition(() => (location.hash = href)); }}>
-            {pick === null ? t.today.cta : t.home.deckCta}
-          </a>
-          <span className="dhint">{pick === null ? t.home.deckHint : mult > 0 ? t.home.deckPays(`×${mult.toFixed(2)}`) : t.home.deckFresh}</span>
-        </div>
       </div>
-      </div>
-      {markets.length > 1 && (
+      {n > 1 && (
         <div className="dnav">
           <button onClick={() => go(-1)} aria-label={t.home.prev}>‹</button>
-          <span className="tab">{(idx % markets.length) + 1} / {markets.length}</span>
+          <span className="tab">{(idx % n) + 1} / {n}</span>
           <button onClick={() => go(1)} aria-label={t.home.next}>›</button>
         </div>
       )}
