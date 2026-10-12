@@ -1,1 +1,1 @@
-{ "name": "cwf-markets", "private": true, "workspaces": ["packages/*", "workers/*", "app"] }
+{ "name": "sortium", "private": true, "workspaces": ["packages/*", "workers/*", "app"] }

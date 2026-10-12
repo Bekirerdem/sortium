@@ -114,7 +114,7 @@ What you can check yourself, and what you currently have to trust:
 ## Architecture
 
 ```
-cwf-markets/
+sortium/
 ├── contracts/            Foundry: TestUSD, PoolMarkets, UmaResolver + unit, fuzz and fork tests
 ├── packages/templates/   Templates, pure resolvers, code hashes, registration, verifier CLI, seed script
 ├── workers/engine/       Cloudflare Worker (cron + API) with D1: factory, resolver, settler, indexer, faucet
@@ -196,7 +196,7 @@ The verifier does three things:
 **Prerequisites:** [Bun](https://bun.sh) 1.3+, [Foundry](https://getfoundry.sh), Node 20+ for Wrangler, and optionally [Deno](https://deno.com) 2.x to host the app.
 
 ```bash
-git clone <this repo> && cd cwf-markets
+git clone https://github.com/Bekirerdem/sortium.git && cd sortium
 bun install
 git submodule update --init --recursive      # OpenZeppelin + forge-std for contracts/
 ```
