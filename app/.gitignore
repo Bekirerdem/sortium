@@ -23,5 +23,3 @@ dist-ssr
 *.sln
 *.sw?
 
-# Deno Deploy bundle (copied from dist at deploy time)
-deno/dist
