@@ -12,6 +12,17 @@ test("nextResolve is a 12:00 UTC slot leaving open time before the 12h lock", ()
   expect(r).toBe(Date.UTC(2026, 9, 13, 12, 0, 0) / 1000);
 });
 
+test("planned keys are computable without fetching and match the draft key format", () => {
+  const now = Date.UTC(2026, 9, 12, 4, 0, 0) / 1000;
+  const keys = TEMPLATES.AM_TOP_COUNTRY.plannedKeys!({ now });
+  expect(keys.length).toBe(10);
+  expect(keys[0]).toBe("AM_TOP_COUNTRY:tr:2026-10-13");
+  const demoA = TEMPLATES.AM_TOP_DEMO.plannedKeys!({ now });
+  const demoB = TEMPLATES.AM_TOP_DEMO.plannedKeys!({ now: now + 900 });
+  expect(demoA[0]).not.toBe(demoB[0]); // a fresh demo market every 15 minutes
+  expect(TEMPLATES.YT_TOP_COUNTRY.plannedKeys!({ now })).toEqual([]);
+});
+
 test("YouTube templates produce nothing without an API key", async () => {
   const env = { now: 1_800_000_000 };
   expect(await TEMPLATES.YT_TOP_COUNTRY.drafts(env)).toEqual([]);

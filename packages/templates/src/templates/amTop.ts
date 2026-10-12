@@ -10,11 +10,15 @@ type Feed = { feed: { results: { id: string; name: string; artistName: string }[
 /** Apple's feed edge intermittently answers 5xx; retry a few times before giving up. */
 export async function fetchFeed(cc: string, n = 10): Promise<Feed> {
   let last = "";
-  for (let attempt = 0; attempt < 4; attempt++) {
-    const res = await fetch(feedUrl(cc, n), { headers: { "user-agent": "cwf-markets" } });
-    if (res.ok) return (await res.json()) as Feed;
-    last = `apple feed ${cc} ${res.status}`;
-    await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(feedUrl(cc, n), { headers: { "user-agent": "cwf-markets" }, signal: AbortSignal.timeout(6000) });
+      if (res.ok) return (await res.json()) as Feed;
+      last = `apple feed ${cc} ${res.status}`;
+    } catch (e) {
+      last = `apple feed ${cc} ${String(e)}`;
+    }
+    await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
   }
   throw new Error(last);
 }
@@ -29,7 +33,10 @@ export function nextResolve(now: number): number {
 const utc = (t: number) => new Date(t * 1000).toISOString().slice(0, 16).replace("T", " ");
 
 function make(key: string, demo: boolean, countries: readonly string[]): Template {
+  const windowKey = (now: number) =>
+    demo ? String(Math.floor(now / 900)) : new Date(nextResolve(now) * 1000).toISOString().slice(0, 10);
   return {
+    plannedKeys: (env: Env) => countries.map((cc) => `${key}:${cc}:${windowKey(env.now)}`),
     key,
     version: 1,
     demo,
@@ -44,12 +51,18 @@ function make(key: string, demo: boolean, countries: readonly string[]): Templat
       for (const cc of countries) {
         const resolveTime = demo ? env.now + 600 : nextResolve(env.now);
         const lockTime = demo ? env.now + 300 : resolveTime - 12 * 3600;
-        const feed = await fetchFeed(cc, 7);
+        let feed: Feed;
+        try {
+          feed = await fetchFeed(cc, 7);
+        } catch (e) {
+          console.error(String(e)); // one storefront failing must not block the others
+          continue;
+        }
         const candidates = feed.feed.results.slice(0, 7).map((r) => ({ id: r.id, label: `${r.artistName} – ${r.name}` }));
         out.push({
           templateKey: key,
           entity: cc,
-          windowKey: demo ? String(Math.floor(env.now / 900)) : new Date(resolveTime * 1000).toISOString().slice(0, 10),
+          windowKey: windowKey(env.now),
           question: `${demo ? "[demo] " : ""}Which song will be #1 on Apple Music ${cc.toUpperCase()} at ${utc(resolveTime)} UTC?`,
           outcomes: [...candidates.map((c) => c.label), "Other"],
           lockTime,

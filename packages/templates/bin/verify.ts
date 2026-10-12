@@ -10,7 +10,7 @@ if (!arg || !/^\d+$/.test(arg)) {
   process.exit(2);
 }
 const id = BigInt(arg);
-const api = process.env.ENGINE_URL ?? "https://cwf-engine.bekirerdem.workers.dev";
+const api = process.env.ENGINE_URL ?? "https://cwf-engine.l3ekirerdem.workers.dev";
 const pub = createPublicClient({ chain: arbitrumSepolia, transport: http() });
 
 const meta = (await (await fetch(`${api}/api/markets/${id}`)).json()) as { templateKey: string; meta: Record<string, unknown> };

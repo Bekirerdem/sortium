@@ -1,0 +1,36 @@
+export const ENGINE = (import.meta.env.VITE_ENGINE_URL as string | undefined) ?? "https://cwf-engine.l3ekirerdem.workers.dev";
+
+export type ApiMarket = {
+  id: number;
+  templateKey: string;
+  entity: string;
+  question: string;
+  outcomes: string[];
+  lockTime: number;
+  resolveTime: number;
+  status: string;
+  demo: boolean;
+  meta: Record<string, unknown>;
+  assertionId?: string;
+  rules?: string;
+  live?: { label: string; value: string };
+};
+
+export async function listMarkets(status = "all"): Promise<ApiMarket[]> {
+  const r = await fetch(`${ENGINE}/api/markets?status=${status}`);
+  if (!r.ok) throw new Error(`engine ${r.status}`);
+  return ((await r.json()) as { markets: ApiMarket[] }).markets;
+}
+
+export async function getMarket(id: number): Promise<ApiMarket> {
+  const r = await fetch(`${ENGINE}/api/markets/${id}`);
+  if (!r.ok) throw new Error(`engine ${r.status}`);
+  return (await r.json()) as ApiMarket;
+}
+
+export async function faucet(address: string) {
+  const r = await fetch(`${ENGINE}/api/faucet`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ address }) });
+  return (await r.json()) as { ok: boolean; error?: string; txs?: string[] };
+}
+
+export const evidenceUrl = (id: number) => `${ENGINE}/api/evidence/${id}`;

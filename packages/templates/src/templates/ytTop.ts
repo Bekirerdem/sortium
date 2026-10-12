@@ -21,6 +21,8 @@ export const ytTop: Template = {
   version: 1,
   demo: false,
   resolveFile: "resolve/ytTop.ts",
+  plannedKeys: (env: Env) =>
+    env.YOUTUBE_API_KEY ? REGIONS.map((r) => `YT_TOP_COUNTRY:${r}:${new Date(nextResolve(env.now) * 1000).toISOString().slice(0, 10)}`) : [],
   rules:
     "Outcome = the first item of YouTube Data API v3 videos.list chart=mostPopular for the region at the first resolver fetch " +
     "at or after resolve time. A video not in the list wins as 'Other'. Empty or failing chart for 6 hours → void, stakes refunded.",

@@ -1,0 +1,14 @@
+{
+  "name": "cwf-engine",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "triggers": { "crons": ["* * * * *"] },
+  "d1_databases": [{ "binding": "DB", "database_name": "cwf-engine", "database_id": "60baf869-42f2-4e3a-98cd-d76242e6b8bd" }],
+  "vars": {
+    "APP_ORIGIN": "https://cwf-markets.pages.dev",
+    "PUBLIC_URL": "https://cwf-engine.l3ekirerdem.workers.dev",
+    "YT_CREATORS": "UCX6OQ3DkcsbYNE6H8uQQuVA"
+  },
+  "observability": { "enabled": true }
+}

@@ -25,6 +25,8 @@ export interface Template {
   rules: string;
   /** Path (relative to src/) of the pure resolve file whose text is hashed into codeHash. */
   resolveFile: string;
+  /** Draft keys (template:entity:window) this template would open now, computable without fetching sources; lets the engine skip work. */
+  plannedKeys?(env: Env): string[];
   drafts(env: Env): Promise<MarketDraft[]>;
   snapshot(meta: Record<string, unknown>, env: Env): Promise<Snapshot>;
   resolve(meta: Record<string, unknown>, snap: Snapshot): number;
