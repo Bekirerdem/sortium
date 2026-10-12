@@ -3,7 +3,7 @@ import gsap from "gsap";
 import { parseUnits } from "viem";
 import { EXPLORER, placeBet } from "../lib/chain";
 import { multiplier } from "../lib/format";
-import { useT } from "../lib/i18n";
+import { errorText, useLang, useT } from "../lib/i18n";
 import { splitLabel } from "../lib/market";
 import { EASE, reduced, tweenNumber, useMagnetic } from "../lib/motion";
 import type { Wallet } from "../hooks/useWallet";
@@ -24,6 +24,7 @@ const AMOUNTS = [5, 10, 25, 50];
 
 export function BetSlip({ marketId, label, art, pools, selected, open, wallet, onDone, onToast }: Props) {
   const t = useT();
+  const lang = useLang();
   const [amount, setAmount] = useState(25);
   const [busy, setBusy] = useState(false);
   const slip = useRef<HTMLDivElement>(null);
@@ -69,7 +70,7 @@ export function BetSlip({ marketId, label, art, pools, selected, open, wallet, o
       onDone();
       wallet.refresh();
     } catch (e) {
-      onToast((e as Error).message.split("\n")[0].slice(0, 140));
+      onToast(errorText(e, lang));
     } finally {
       setBusy(false);
     }

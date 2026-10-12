@@ -10,11 +10,12 @@ import type { Wallet } from "../hooks/useWallet";
 import { evidenceUrl } from "../lib/api";
 import { EXPLORER, claim, readCodeHash } from "../lib/chain";
 import { compactNum, countdown, usd } from "../lib/format";
-import { decidedAt, useLang, useT } from "../lib/i18n";
+import { decidedAt, errorText, useLang, useT } from "../lib/i18n";
 import { artFor, coverOf, leaderIndex, splitLabel } from "../lib/market";
 import { EASE, reduced, useEntrance, useMagnetic, useTilt } from "../lib/motion";
 import { displayQuestion } from "../lib/question";
-import { family, useNow } from "./Today";
+import { useNow } from "../hooks/useNow";
+import { family } from "../lib/market";
 
 type Props = { id: number; initialPick: number | null; wallet: Wallet; onToast: (m: string) => void; onArt: (a?: string) => void };
 
@@ -76,7 +77,7 @@ export function Market({ id, initialPick, wallet, onToast, onArt }: Props) {
       reload();
       wallet.refresh();
     } catch (e) {
-      onToast((e as Error).message.split("\n")[0].slice(0, 140));
+      onToast(errorText(e, lang));
     }
   };
 

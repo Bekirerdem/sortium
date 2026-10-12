@@ -30,3 +30,12 @@ export function countdown(to: number, now = Date.now() / 1000, lang: Lang = "en"
 
 export const compactNum = (n: number, lang: Lang = "en") =>
   Intl.NumberFormat(locale(lang), { notation: "compact", maximumFractionDigits: 1 }).format(n);
+
+export const shortAddr = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
+
+/** A stable two-colour gradient per address, so the same player is recognisable across the feed and the table. */
+export function avatar(a: string): string {
+  const h = parseInt(a.slice(2, 8), 16) % 360;
+  const k = (h + 40 + (parseInt(a.slice(8, 10), 16) % 80)) % 360;
+  return `linear-gradient(135deg, hsl(${h} 80% 62%), hsl(${k} 75% 42%))`;
+}

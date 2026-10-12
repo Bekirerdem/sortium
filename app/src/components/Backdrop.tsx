@@ -14,7 +14,9 @@ export function Backdrop({ art }: { art?: string }) {
           <img key={src} src={src} alt="" className={i === layers.length - 1 ? "on" : ""} />
         ))}
       </div>
+      <div className="aurora" aria-hidden><i /><i /></div>
       <div className="veil" aria-hidden />
+      <div className="grain" aria-hidden />
     </>
   );
 }

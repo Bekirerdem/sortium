@@ -22,7 +22,7 @@ export function MarketTile({ m, now }: { m: ApiMarket; now: number }) {
     >
       <div className="pic" style={{ viewTransitionName: `cover-${m.id}` }}>{cover && <img src={cover} alt="" loading="lazy" />}</div>
       <div className="q">
-        {displayQuestion(m, { lang })}
+        {displayQuestion(m, { short: true, lang })}
         {m.demo && <span className="demo">{t.tile.demo}</span>}
       </div>
       <div className="c tab">{status}</div>

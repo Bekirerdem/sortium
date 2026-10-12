@@ -3,7 +3,8 @@ import { MarketTile } from "../components/MarketTile";
 import type { ApiMarket } from "../lib/api";
 import { useLang, useT } from "../lib/i18n";
 import { useEntrance } from "../lib/motion";
-import { family, useNow } from "./Today";
+import { useNow } from "../hooks/useNow";
+import { family } from "../lib/market";
 
 export function Browse({ markets }: { markets: ApiMarket[] }) {
   const t = useT();

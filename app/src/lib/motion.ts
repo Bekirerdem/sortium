@@ -82,3 +82,25 @@ export function withViewTransition(update: () => void) {
   if (!doc.startViewTransition || reduced()) return update();
   doc.startViewTransition(() => flushSync(update));
 }
+
+/** Sections below the fold rise in as they scroll into view, children staggered, once each. */
+export function useReveal(scope: RefObject<HTMLElement | null>, deps: unknown[]) {
+  useEffect(() => {
+    const root = scope.current;
+    if (!root || reduced() || typeof IntersectionObserver === "undefined") return;
+    const targets = [...root.querySelectorAll<HTMLElement>("[data-reveal]")].filter((el) => !el.dataset.shown);
+    targets.forEach((el) => gsap.set(el.querySelectorAll(":scope > *"), { y: 36, opacity: 0 }));
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        const el = e.target as HTMLElement;
+        el.dataset.shown = "1";
+        io.unobserve(el);
+        gsap.to(el.querySelectorAll(":scope > *"), { y: 0, opacity: 1, duration: 0.9, stagger: 0.08, ease: EASE.land });
+      }
+    }, { rootMargin: "0px 0px -12% 0px" });
+    targets.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+}

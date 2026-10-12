@@ -34,3 +34,17 @@ export async function faucet(address: string) {
 }
 
 export const evidenceUrl = (id: number) => `${ENGINE}/api/evidence/${id}`;
+
+export type Activity = { marketId: number; user: string; outcome: number; amount: string; kind: "bet" | "claim"; block: number; tx: string; time: number };
+export type Stats = { volume: string; bets: number; players: number; openMarkets: number; settledMarkets: number; paidOut: string };
+export type Leader = { user: string; volume: string; won: string; bets: number; wins: number };
+
+async function getJson<T>(path: string): Promise<T> {
+  const r = await fetch(`${ENGINE}${path}`);
+  if (!r.ok) throw new Error(`engine ${r.status}`);
+  return (await r.json()) as T;
+}
+
+export const getActivity = (limit = 30) => getJson<{ items: Activity[] }>(`/api/activity?limit=${limit}`).then((r) => r.items);
+export const getStats = () => getJson<Stats>("/api/stats");
+export const getLeaders = () => getJson<{ items: Leader[] }>("/api/leaderboard").then((r) => r.items);

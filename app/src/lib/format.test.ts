@@ -23,3 +23,8 @@ test("Turkish countdown and numbers", () => {
   expect(countdown(65, 0, "tr")).toBe("1 dk 5 sn");
   expect(usd(1_234_567_000n, "tr")).toBe("1.234,57");
 });
+test("short address and stable avatar", async () => {
+  const { shortAddr, avatar } = await import("./format");
+  expect(shortAddr("0x1234567890abcdef1234567890abcdef12345678")).toBe("0x1234…5678");
+  expect(avatar("0x1234567890abcdef")).toBe(avatar("0x1234567890abcdef"));
+});

@@ -52,7 +52,59 @@ export const TR_COUNTRY: Record<string, [string, string]> = {
 };
 
 const en = {
-  nav: { today: "Today", browse: "Browse", me: "My picks" },
+  nav: { today: "Today", browse: "Markets", me: "My picks", leaders: "Leaderboard" },
+  home: {
+    title: "Call what the internet does next.",
+    sub: "Which song tops Apple Music tomorrow? Which video trends on YouTube? Put test dollars on your pick. Everyone who's right splits the pool, and open code reads the result from the official chart.",
+    start: "Start with 1,000 test dollars",
+    browse: "See all markets",
+    stats: { volume: "In pools", bets: "Picks made", players: "Players", open: "Open markets" },
+    deckHint: "Tap a pick to see what it pays",
+    deckCta: "Make this pick",
+    deckPays: (m: string) => `pays ${m} per tUSD`,
+    deckFresh: "nobody's on it yet",
+    prev: "Previous market",
+    next: "Next market",
+    tickerBet: (u: string, a: string, l: string) => `${u} put ${a} tUSD on ${l}`,
+    tickerClaim: (u: string, a: string) => `${u} collected ${a} tUSD`,
+    howTitle: "How it works",
+    how: [
+      ["Pick", "Choose the song or video you think will be on top when the clock runs out."],
+      ["Put in", "Your test dollars join the market's single pool. The fewer people on your pick, the more it pays."],
+      ["The chart decides", "Open code reads the official chart and posts it to UMA's oracle, where anyone can dispute a wrong answer. Winners split the pool."],
+    ],
+    closing: "Closing soon",
+    leadersTitle: "Top players",
+    won: "won",
+    staked: "staked",
+    picks: (n: number) => `${n} picks`,
+    leadersEmpty: "No results yet. The first daily markets settle at 12:00 UTC.",
+    activityTitle: "Live picks",
+    activityEmpty: "Picks show up here a few seconds after they land onchain.",
+    tokenTitle: "tUSD, the test dollar Sortium runs on",
+    tokenBody: "Every market on testnet is played in tUSD, our own ERC-20 on Arbitrum Sepolia. Approvals are signatures, not extra transactions (EIP-2612). Anyone can claim 1,000 a day, with a little test ETH for gas. On mainnet USDC takes its place.",
+    tokenAdd: "Add tUSD to my wallet",
+    tokenContract: "Token contract",
+    supply: "Decimals",
+    footer: "Testnet only. Test dollars have no value.",
+  },
+  picker: {
+    title: "How do you want to play?",
+    instant: "Instant wallet",
+    instantDesc: "Nothing to install. A test wallet opens in this browser and 1,000 tUSD plus gas arrive automatically.",
+    fastest: "Fastest",
+    or: "Or connect your own wallet",
+    none: "No browser wallet found. MetaMask, Rabby and OKX Wallet work with Arbitrum Sepolia.",
+    noTestnet: "No Arbitrum Sepolia support",
+    close: "Close",
+    errors: {
+      unsupported: (w: string) => `${w || "This wallet"} can't switch to Arbitrum Sepolia. Use the instant wallet, or MetaMask, Rabby or OKX Wallet.`,
+      rejected: () => "You closed the wallet request.",
+      none: () => "Connect a wallet first.",
+    },
+    menuInstant: "Instant wallet in this browser",
+    logout: "Disconnect",
+  },
   lang: { label: "Language", other: "TR" },
   family: { music: "Music", youtube: "YouTube" },
   engineDown: "Can't reach the market engine right now. Retrying every 30 seconds.",
@@ -179,7 +231,59 @@ const en = {
 type Dict = typeof en;
 
 const tr: Dict = {
-  nav: { today: "Bugün", browse: "Keşfet", me: "Tahminlerim" },
+  nav: { today: "Bugün", browse: "Marketler", me: "Tahminlerim", leaders: "Sıralama" },
+  home: {
+    title: "İnternetin bir sonraki hamlesini tahmin et.",
+    sub: "Yarın Apple Music'te hangi şarkı zirvede olacak? YouTube'da hangi video trend olacak? Tahminine test doları koy. Bilen herkes havuzu paylaşır, sonucu resmi listeden açık kod okur.",
+    start: "1.000 test doları ile başla",
+    browse: "Tüm marketler",
+    stats: { volume: "Havuzlarda", bets: "Yapılan tahmin", players: "Oyuncu", open: "Açık market" },
+    deckHint: "Ne kazandıracağını görmek için bir seçeneğe dokun",
+    deckCta: "Bu tahmini yap",
+    deckPays: (m: string) => `tUSD başına ${m} öder`,
+    deckFresh: "henüz kimse seçmedi",
+    prev: "Önceki market",
+    next: "Sonraki market",
+    tickerBet: (u: string, a: string, l: string) => `${u}, ${l} için ${a} tUSD koydu`,
+    tickerClaim: (u: string, a: string) => `${u} ${a} tUSD kazancını aldı`,
+    howTitle: "Nasıl çalışır",
+    how: [
+      ["Seç", "Süre dolduğunda zirvede olacağını düşündüğün şarkıyı ya da videoyu seç."],
+      ["Havuza koy", "Test doların marketin tek havuzuna girer. Seçtiğine ne kadar az kişi koyduysa o kadar çok kazandırır."],
+      ["Kararı liste verir", "Açık kod resmi listeyi okur ve sonucu UMA oracle'ına yazar; yanlışsa herkes itiraz edebilir. Bilenler havuzu paylaşır."],
+    ],
+    closing: "Kapanmak üzere",
+    leadersTitle: "En iyi oyuncular",
+    won: "kazanç",
+    staked: "yatırılan",
+    picks: (n: number) => `${n} tahmin`,
+    leadersEmpty: "Henüz sonuç yok. İlk günlük marketler 12:00 UTC'de sonuçlanıyor.",
+    activityTitle: "Canlı tahminler",
+    activityEmpty: "Tahminler zincire düştükten birkaç saniye sonra burada görünür.",
+    tokenTitle: "tUSD: Sortium'un test doları",
+    tokenBody: "Testnetteki her market tUSD ile oynanır: Arbitrum Sepolia'daki kendi ERC-20 tokenimiz. Onay ayrı bir işlem değil, tek imza (EIP-2612). Herkes günde 1.000 tUSD alabilir, gas için yanında biraz test ETH'si gelir. Mainnet'te yerini USDC alır.",
+    tokenAdd: "tUSD'yi cüzdanıma ekle",
+    tokenContract: "Token kontratı",
+    supply: "Ondalık",
+    footer: "Sadece testnet. Test dolarlarının değeri yoktur.",
+  },
+  picker: {
+    title: "Nasıl oynamak istersin?",
+    instant: "Anında cüzdan",
+    instantDesc: "Kurulum yok. Bu tarayıcıda bir test cüzdanı açılır, 1.000 tUSD ve gas kendiliğinden gelir.",
+    fastest: "En hızlı",
+    or: "Ya da kendi cüzdanını bağla",
+    none: "Tarayıcıda cüzdan bulunamadı. MetaMask, Rabby ve OKX Wallet Arbitrum Sepolia ile çalışır.",
+    noTestnet: "Arbitrum Sepolia desteği yok",
+    close: "Kapat",
+    errors: {
+      unsupported: (w: string) => `${w || "Bu cüzdan"} Arbitrum Sepolia ağına geçemiyor. Anında cüzdanı ya da MetaMask, Rabby veya OKX Wallet'ı kullan.`,
+      rejected: () => "Cüzdan isteğini kapattın.",
+      none: () => "Önce bir cüzdan bağla.",
+    },
+    menuInstant: "Bu tarayıcıdaki anında cüzdan",
+    logout: "Çıkış yap",
+  },
   lang: { label: "Dil", other: "EN" },
   family: { music: "Müzik", youtube: "YouTube" },
   engineDown: "Market motoruna şu an ulaşılamıyor. 30 saniyede bir yeniden deneniyor.",
@@ -334,4 +438,23 @@ export function decidedAt(t: number, l: Lang): string {
   const hhmm = d.toISOString().slice(11, 16);
   if (l === "tr") return `${d.toLocaleString("tr-TR", { month: "long", day: "numeric", timeZone: "UTC" })} ${trClock(hhmm)} (UTC)`;
   return `on ${d.toLocaleString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })} at ${hhmm} UTC`;
+}
+
+/** "3 min. ago" · "3 dk. önce" */
+export function ago(t: number, l: Lang, now = Date.now() / 1000): string {
+  const s = Math.max(0, Math.round(now - t));
+  const f = new Intl.RelativeTimeFormat(locale(l), { numeric: "auto", style: "short" });
+  if (s < 60) return f.format(-s, "second");
+  if (s < 3600) return f.format(-Math.floor(s / 60), "minute");
+  if (s < 86400) return f.format(-Math.floor(s / 3600), "hour");
+  return f.format(-Math.floor(s / 86400), "day");
+}
+
+/** A wallet or chain error as one readable sentence. */
+export function errorText(e: unknown, l: Lang): string {
+  const code = (e as { code?: unknown }).code;
+  const name = (e as { wallet?: string }).wallet ?? "";
+  if (code === "unsupported" || code === "rejected" || code === "none") return STR[l].picker.errors[code](name);
+  if (code === 4001) return STR[l].picker.errors.rejected();
+  return String((e as Error).message ?? e).split("\n")[0].slice(0, 140);
 }

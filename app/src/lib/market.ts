@@ -22,3 +22,5 @@ export function splitLabel(label: string): { title: string; by: string } {
   if (at === -1) return { title: label, by: "" };
   return { title: label.slice(at + 3), by: label.slice(0, at) };
 }
+
+export const family = (key: string) => (key.startsWith("YT") ? "YouTube" : "Music");
