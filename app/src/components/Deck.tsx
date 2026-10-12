@@ -117,12 +117,31 @@ export function Deck({ markets, wallet, onArt }: Props) {
     }
   };
 
+  // autoplay: a progress line fills, then the stack moves on; hovering, touching or picking holds it
+  const bar = useRef<HTMLSpanElement>(null);
+  const hold = useRef(false);
+  const auto = useRef<gsap.core.Tween | null>(null);
+  const goRef = useRef(go);
+  goRef.current = go;
+  useEffect(() => {
+    if (!bar.current || n < 2 || reduced()) return;
+    auto.current = gsap.fromTo(bar.current, { scaleX: 0 }, { scaleX: 1, duration: 6, ease: "none", onComplete: () => goRef.current(1) });
+    if (hold.current || pick !== null) auto.current.pause();
+    return () => { auto.current?.kill(); };
+  }, [idx, n, pick]);
+  const holdOn = () => { hold.current = true; auto.current?.pause(); };
+  const holdOff = () => { hold.current = false; if (pick === null) auto.current?.resume(); };
+
   const href = `#/m/${m.id}${pick !== null ? `?pick=${pick}` : ""}`;
   const mult = pick !== null && pools ? multiplier(pools, pick, 10_000000n) : 0;
   const behind = n > 1 ? [1, 2].slice(0, Math.min(2, n - 1)).map((k) => markets[(idx + k) % n]) : [];
 
   return (
     <div className="deck"
+      onPointerEnter={(e) => { if (e.pointerType === "mouse") holdOn(); }}
+      onPointerLeave={(e) => { if (e.pointerType === "mouse") holdOff(); }}
+      onFocus={holdOn}
+      onBlur={holdOff}
       onPointerDown={(e) => { swipe.current = e.clientX; }}
       onPointerUp={(e) => {
         if (swipe.current === null) return;
@@ -152,6 +171,7 @@ export function Deck({ markets, wallet, onArt }: Props) {
       {n > 1 && (
         <div className="dnav">
           <button onClick={() => go(-1)} aria-label={t.home.prev}>‹</button>
+          <span className="dprog" aria-hidden><span ref={bar} /></span>
           <span className="tab">{(idx % n) + 1} / {n}</span>
           <button onClick={() => go(1)} aria-label={t.home.next}>›</button>
         </div>

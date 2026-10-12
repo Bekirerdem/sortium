@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { parseUnits } from "viem";
 import { EXPLORER, placeBet } from "../lib/chain";
+import { burst } from "../lib/confetti";
 import { multiplier } from "../lib/format";
 import { errorText, useLang, useT } from "../lib/i18n";
 import { splitLabel } from "../lib/market";
@@ -58,6 +59,10 @@ export function BetSlip({ marketId, label, art, pools, selected, open, wallet, o
     setBusy(true);
     try {
       const hash = await placeBet(wallet.address, BigInt(marketId), selected, raw);
+      if (slip.current) {
+        const r = slip.current.getBoundingClientRect();
+        burst(r.left + r.width / 2, r.top + 10);
+      }
       if (slip.current && !reduced()) {
         const ring = slip.current.querySelector(".ring");
         gsap.timeline()

@@ -30,9 +30,9 @@ export const ytViews: Template = {
     const key = env.YOUTUBE_API_KEY;
     const out: MarketDraft[] = [];
     for (const channelId of env.YT_CREATORS.split(",").map((s) => s.trim()).filter(Boolean)) {
-      const ch = await yt<{ items?: { contentDetails: { relatedPlaylists: { uploads: string } } }[] }>(`channels?part=contentDetails&id=${channelId}`, key);
-      const uploads = ch.items?.[0]?.contentDetails.relatedPlaylists.uploads;
-      if (!uploads) continue;
+      // a channel's uploads playlist is its id with UC swapped for UU, which saves one API call per creator
+      if (!channelId.startsWith("UC")) continue;
+      const uploads = `UU${channelId.slice(2)}`;
       const pl = await yt<{ items: { contentDetails: { videoId: string } }[] }>(`playlistItems?part=contentDetails&maxResults=11&playlistId=${uploads}`, key);
       const ids = pl.items.map((i) => i.contentDetails.videoId);
       if (ids.length < 2) continue;

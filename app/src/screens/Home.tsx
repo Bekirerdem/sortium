@@ -1,10 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ADDRESSES } from "@cwf/templates";
 import { Deck } from "../components/Deck";
 import { Headline } from "../components/Headline";
-import { MarketTile } from "../components/MarketTile";
-import { Rail } from "../components/Rail";
+import { CATS, CategoryBar, type Cat } from "../components/CategoryBar";
+import { MarketCard } from "../components/MarketCard";
 import { useNow } from "../hooks/useNow";
 import { usePoll } from "../hooks/usePoll";
 import type { Wallet } from "../hooks/useWallet";
@@ -12,9 +12,9 @@ import { getActivity, getLeaders, getStats, type Activity, type ApiMarket, type 
 import { EXPLORER, watchToken } from "../lib/chain";
 import { avatar, compactNum, shortAddr, usd } from "../lib/format";
 import { ago, useLang, useT } from "../lib/i18n";
-import { artFor, coverOf, splitLabel } from "../lib/market";
+import { artFor, category, coverOf, splitLabel } from "../lib/market";
 import { EASE, reduced, tweenNumber, useEntrance, useMagnetic, useReveal, withViewTransition } from "../lib/motion";
-import { displayOutcome } from "../lib/question";
+import { displayOutcome, displayQuestion } from "../lib/question";
 
 const HERO_ORDER = ["us", "tr", "gb", "kr", "br", "jp", "de", "fr", "mx", "in"];
 const rank = (m: ApiMarket) => {
@@ -52,10 +52,10 @@ function Stat({ value, label, money }: { value: number | undefined; label: strin
 
 function labelFor(markets: ApiMarket[], a: Activity, lang: "en" | "tr", other: string) {
   const m = markets.find((x) => x.id === a.marketId);
-  const raw = m?.outcomes[a.outcome];
-  if (!m || !raw) return { title: `#${a.marketId}`, art: undefined, m };
+  const raw = a.outcome === null ? undefined : m?.outcomes[a.outcome];
+  if (!m || !raw) return { title: `#${a.marketId}`, art: m ? coverOf(m) : undefined, m };
   const title = raw === "Other" ? other : splitLabel(displayOutcome(raw, lang)).title;
-  return { title, art: artFor(m.meta, a.outcome) ?? coverOf(m), m };
+  return { title, art: artFor(m.meta, a.outcome ?? -1) ?? coverOf(m), m };
 }
 
 function Ticker({ items, markets }: { items: Activity[]; markets: ApiMarket[] }) {
@@ -143,6 +143,8 @@ export function Leaders({ items, full }: { items: Leader[] | null; full?: boolea
   );
 }
 
+type Sort = "closing" | "pool" | "fresh";
+
 export function Home({ markets, wallet, onArt }: { markets: ApiMarket[]; wallet: Wallet; onArt: (a?: string) => void }) {
   const t = useT();
   const lang = useLang();
@@ -152,27 +154,48 @@ export function Home({ markets, wallet, onArt }: { markets: ApiMarket[]; wallet:
   const stats = usePoll(getStats, 20_000);
   const activity = usePoll(() => getActivity(30), 12_000);
   const leaders = usePoll(getLeaders, 30_000);
+  const [cat, setCat] = useState<Cat>("all");
+  const [q, setQ] = useState("");
+  const [sort, setSort] = useState<Sort>("closing");
   useEntrance(scope, [lang]);
   useReveal(scope, [lang, activity === null, leaders === null]);
 
   const open = markets.filter((m) => m.status === "open" && m.lockTime > now);
-  const deck = deckMarkets(open);
-  const closing = [...open].filter((m) => !m.demo).sort((a, b) => a.lockTime - b.lockTime).slice(0, 12);
+  const inCat = (c: Cat) => (c === "all" ? open : c === "soon" ? [] : open.filter((m) => category(m) === c));
+  const counts = Object.fromEntries(CATS.filter((c) => c !== "soon").map((c) => [c, inCat(c).length])) as Partial<Record<Cat, number>>;
+  // the deck follows the category; empty categories fall back to everything so the hero never goes blank
+  const deckSource = inCat(cat).length ? inCat(cat) : open;
+  const deck = cat === "all" ? deckMarkets(open) : deckSource;
+
+  const needle = q.trim().toLocaleLowerCase(lang === "tr" ? "tr-TR" : "en-US");
+  const matches = (m: ApiMarket) => !needle || [displayQuestion(m, { lang }), m.entity, ...m.outcomes].join(" ").toLocaleLowerCase(lang === "tr" ? "tr-TR" : "en-US").includes(needle);
+  const grid = inCat(cat).filter(matches).sort((a, b) =>
+    sort === "pool" ? Number(BigInt(b.pool?.total ?? "0") - BigInt(a.pool?.total ?? "0")) || a.lockTime - b.lockTime
+      : sort === "fresh" ? b.id - a.id
+        : a.lockTime - b.lockTime);
 
   const begin = () => {
     if (!wallet.address) return wallet.login();
     document.getElementById("deck")?.scrollIntoView({ behavior: reduced() ? "auto" : "smooth", block: "center" });
   };
 
+  const pickCat = (c: Cat) => {
+    setCat(c);
+    const g = document.getElementById("grid");
+    if (g && !reduced()) gsap.fromTo(g.children, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, stagger: 0.03, ease: EASE.land });
+  };
+
   return (
     <div ref={scope}>
+      <div className="cats-wrap"><CategoryBar value={cat} counts={counts} onChange={pickCat} /></div>
+
       <section className="hero">
         <div className="hero-copy">
           <Headline text={t.home.title} />
           <p className="lede" data-rise>{t.home.sub}</p>
           <div className="hero-cta" data-rise>
             <button ref={start} className="btn light big" onClick={begin}>{wallet.address ? t.today.cta : t.home.start}</button>
-            <a className="btn ghost big" href="#/browse" onClick={(e) => { e.preventDefault(); withViewTransition(() => (location.hash = "#/browse")); }}>{t.home.browse}</a>
+            <a className="btn ghost big" href="#grid" onClick={(e) => { e.preventDefault(); document.getElementById("markets")?.scrollIntoView({ behavior: reduced() ? "auto" : "smooth" }); }}>{t.home.browse}</a>
           </div>
           <div className="stats">
             <Stat value={stats ? Number(stats.volume) / 1e6 : undefined} label={t.home.stats.volume} money />
@@ -182,11 +205,43 @@ export function Home({ markets, wallet, onArt }: { markets: ApiMarket[]; wallet:
           </div>
         </div>
         <div id="deck" className="hero-deck" data-cover>
-          {deck.length > 0 ? <Deck markets={deck} wallet={wallet} onArt={onArt} /> : <p className="loading">{t.today.empty}</p>}
+          <p className="deck-note">{t.home.catNote[cat === "soon" || !inCat(cat).length ? "all" : cat]}</p>
+          {deck.length > 0 ? <Deck key={cat} markets={deck} wallet={wallet} onArt={onArt} /> : <p className="loading">{t.today.empty}</p>}
         </div>
       </section>
 
       <Ticker items={activity ?? []} markets={markets} />
+
+      <section className="markets" id="markets">
+        <div className="markets-head">
+          <h2>{t.home.gridTitle}<span className="muted"> {t.home.cats[cat]}</span></h2>
+          <div className="tools">
+            <label className="search">
+              <span aria-hidden>⌕</span>
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t.home.search} aria-label={t.home.search} />
+            </label>
+            <div className="sorts" role="group">
+              {(["closing", "pool", "fresh"] as Sort[]).map((s) => (
+                <button key={s} aria-pressed={sort === s} onClick={() => setSort(s)}>{t.home.sort[s]}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+        {cat === "soon" ? (
+          <div className="mgrid" id="grid">
+            {t.browse.soon.map(([name, question]) => (
+              <article className="mcard soon" key={name}>
+                <header><div className="mpic glyph-pic" aria-hidden>{name.slice(0, 1)}</div><div className="mq"><span className="mfam">{name}</span><span className="soon-q">{question}</span></div></header>
+                <footer><span>{t.browse.soonNote}</span></footer>
+              </article>
+            ))}
+          </div>
+        ) : grid.length ? (
+          <div className="mgrid" id="grid">{grid.map((m) => <MarketCard key={m.id} m={m} now={now} />)}</div>
+        ) : (
+          <p className="empty" id="grid">{cat === "views" && !needle ? t.home.viewsSoon : t.home.noMatch}</p>
+        )}
+      </section>
 
       <section className="how-band">
         <h2>{t.home.howTitle}</h2>
@@ -196,13 +251,6 @@ export function Home({ markets, wallet, onArt }: { markets: ApiMarket[]; wallet:
           ))}
         </ol>
       </section>
-
-      {closing.length > 0 && (
-        <>
-          <div className="rail-head"><h2>{t.home.closing}</h2><span className="muted">{t.today.nMarkets(open.filter((m) => !m.demo).length)}</span></div>
-          <Rail>{closing.map((m) => <MarketTile key={m.id} m={m} now={now} />)}</Rail>
-        </>
-      )}
 
       <div className="boards" data-reveal>
         <Feed items={activity} markets={markets} />
@@ -222,14 +270,6 @@ export function Home({ markets, wallet, onArt }: { markets: ApiMarket[]; wallet:
           <code className="addr-line">{ADDRESSES.tusd}</code>
         </div>
       </section>
-
-      <footer className="foot">
-        <span className="logo">Sortium</span>
-        <span className="muted">{t.home.footer}</span>
-        <a href={`${EXPLORER}/address/${ADDRESSES.markets}`} target="_blank" rel="noopener">PoolMarkets</a>
-        <a href={`${EXPLORER}/address/${ADDRESSES.resolver}`} target="_blank" rel="noopener">UmaResolver</a>
-        <a href="https://docs.uma.xyz" target="_blank" rel="noopener">UMA</a>
-      </footer>
     </div>
   );
 }

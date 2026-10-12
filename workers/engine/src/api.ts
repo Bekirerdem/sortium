@@ -1,6 +1,7 @@
 import { TEMPLATES } from "@cwf/templates";
 import type { Row } from "./logic";
 import { appleIdsByCountry, lookupApple, withArt } from "./art";
+import { poolSummaries } from "./activity";
 
 const toApi = (r: Row) => ({
   id: r.market_id,
@@ -27,8 +28,9 @@ export async function listMarkets(db: D1Database, url: URL) {
         ? db.prepare("SELECT * FROM markets WHERE market_id IS NOT NULL ORDER BY market_id DESC LIMIT 200")
         : db.prepare("SELECT * FROM markets WHERE status = ? ORDER BY market_id DESC LIMIT 200").bind(status);
   const { results } = await q.all<Row>();
-  const markets = results.map(toApi);
-  return Response.json({ markets: withArt(markets, await lookupApple(appleIdsByCountry(markets), db)) });
+  const [art, pools] = await Promise.all([lookupApple(appleIdsByCountry(results.map(toApi)), db), poolSummaries(db).catch(() => new Map())]);
+  const markets = results.map((r) => ({ ...toApi(r), pool: pools.get(r.market_id ?? -1) ?? { byOutcome: {}, total: "0", bettors: 0 } }));
+  return Response.json({ markets: withArt(markets, art) });
 }
 
 async function cachedJson(url: string): Promise<unknown> {

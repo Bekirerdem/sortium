@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Backdrop } from "./components/Backdrop";
 import { FaucetButton } from "./components/FaucetButton";
+import { Footer } from "./components/Footer";
 import { WalletPicker } from "./components/WalletPicker";
 import { useMarkets } from "./hooks/useMarkets";
 import { usePoll } from "./hooks/usePoll";
@@ -84,7 +85,7 @@ export default function App() {
       <main>
         {error && !markets && <p className="err">{t.engineDown}</p>}
         {page === "market" && (
-          <Market key={route![1]} id={Number(route![1])} initialPick={route![2] ? Number(route![2]) : null} wallet={wallet} onToast={setToast} onArt={onArt} />
+          <Market key={route![1]} id={Number(route![1])} initialPick={route![2] ? Number(route![2]) : null} wallet={wallet} markets={markets} onToast={setToast} onArt={onArt} />
         )}
         {page !== "market" && page !== "leaders" && !markets && !error && <p className="loading">{t.loadingMarkets}</p>}
         {page === "home" && markets && <Home markets={markets} wallet={wallet} onArt={onArt} />}
@@ -92,6 +93,7 @@ export default function App() {
         {page === "leaders" && <LeadersPage />}
         {page === "me" && markets && <MyBets markets={markets} wallet={wallet} />}
       </main>
+      <Footer />
       <WalletPicker wallet={wallet} />
       {toast && <div className="toast" role="status">{toast}</div>}
     </>

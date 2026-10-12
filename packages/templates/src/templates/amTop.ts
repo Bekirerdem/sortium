@@ -61,8 +61,9 @@ function make(key: string, demo: boolean, countries: readonly string[]): Templat
     async drafts(env: Env): Promise<MarketDraft[]> {
       const out: MarketDraft[] = [];
       for (const cc of countries) {
-        const resolveTime = demo ? env.now + 600 : nextResolve(env.now);
-        const lockTime = demo ? env.now + 300 : resolveTime - 12 * 3600;
+        // demo windows overlap (a new one every 15 minutes, open for 14), so there is always one to play
+        const resolveTime = demo ? env.now + 1140 : nextResolve(env.now);
+        const lockTime = demo ? env.now + 840 : resolveTime - 12 * 3600;
         let feed: Feed;
         try {
           feed = await fetchFeed(cc, 7);

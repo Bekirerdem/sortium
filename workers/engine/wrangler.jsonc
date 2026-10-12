@@ -8,7 +8,7 @@
   "vars": {
     "APP_ORIGIN": "https://sortium.l3ekirerdem.workers.dev,https://sortium.pages.dev",
     "PUBLIC_URL": "https://cwf-engine.l3ekirerdem.workers.dev",
-    "YT_CREATORS": "UCX6OQ3DkcsbYNE6H8uQQuVA"
+    "YT_CREATORS": "UCX6OQ3DkcsbYNE6H8uQQuVA,UCWsDFcIhY2DBi3GB5uykGXA,UCRijo3ddMTht_IHyNSNXpNQ,UCDogdKl7t7NHzQ95aEwkdMw,UCv6jcPwFujuTIwFQ11jt1Yw"
   },
   "observability": { "enabled": true }
 }

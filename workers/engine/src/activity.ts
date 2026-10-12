@@ -130,12 +130,32 @@ export async function indexActivity(db: D1Database) {
 
 const raw = (n: number | null | undefined) => String(n ?? 0);
 
+export type PoolSummary = { byOutcome: Record<number, string>; total: string; bettors: number };
+
+/** Stake per outcome, total and distinct bettors for every market, from the indexed bets (pools never shrink onchain). */
+export async function poolSummaries(db: D1Database): Promise<Map<number, PoolSummary>> {
+  await ensureTables(db);
+  const [per, who] = await db.batch<{ market_id: number; outcome: number; s: number; n: number }>([
+    db.prepare("SELECT market_id, outcome, SUM(amount) AS s, 0 AS n FROM bets WHERE kind = 'bet' GROUP BY market_id, outcome"),
+    db.prepare("SELECT market_id, 0 AS outcome, SUM(amount) AS s, COUNT(DISTINCT user) AS n FROM bets WHERE kind = 'bet' GROUP BY market_id"),
+  ]);
+  const out = new Map<number, PoolSummary>();
+  for (const r of who.results) out.set(r.market_id, { byOutcome: {}, total: raw(r.s), bettors: r.n });
+  for (const r of per.results) {
+    const p = out.get(r.market_id);
+    if (p) p.byOutcome[r.outcome] = raw(r.s);
+  }
+  return out;
+}
+
 export async function getActivity(db: D1Database, url: URL) {
   await ensureTables(db);
-  const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit")) || 30));
-  const { results } = await db
-    .prepare("SELECT market_id, user, outcome, amount, kind, block, tx_hash, time FROM bets ORDER BY block DESC, log_index DESC LIMIT ?")
-    .bind(limit)
+  const limit = Math.min(500, Math.max(1, Number(url.searchParams.get("limit")) || 30));
+  const market = url.searchParams.get("market");
+  const q = market !== null && /^\d+$/.test(market)
+    ? db.prepare("SELECT market_id, user, outcome, amount, kind, block, tx_hash, time FROM bets WHERE market_id = ? ORDER BY block DESC, log_index DESC LIMIT ?").bind(Number(market), limit)
+    : db.prepare("SELECT market_id, user, outcome, amount, kind, block, tx_hash, time FROM bets ORDER BY block DESC, log_index DESC LIMIT ?").bind(limit);
+  const { results } = await q
     .all<{ market_id: number; user: string; outcome: number | null; amount: number; kind: string; block: number; tx_hash: string; time: number }>();
   return Response.json({
     items: results.map((r) => ({

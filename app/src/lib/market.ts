@@ -24,3 +24,32 @@ export function splitLabel(label: string): { title: string; by: string } {
 }
 
 export const family = (key: string) => (key.startsWith("YT") ? "YouTube" : "Music");
+
+export type Category = "music" | "youtube" | "views" | "fast";
+
+/** Home filter a market belongs to: chart markets by source, view counts, and the minutes-long demo markets. */
+export function category(m: { templateKey: string; demo: boolean }): Category {
+  if (m.demo) return "fast";
+  if (m.templateKey === "YT_VIEWS_24H") return "views";
+  return m.templateKey.startsWith("YT") ? "youtube" : "music";
+}
+
+type PoolLike = { outcomes: string[]; pool?: { byOutcome: Record<string, string>; total: string; bettors: number } };
+
+/** Stake per outcome from the engine's index, so lists can show odds without one RPC call per market. */
+export function poolsOf(m: PoolLike): bigint[] {
+  return m.outcomes.map((_, i) => BigInt(m.pool?.byOutcome[i] ?? "0"));
+}
+
+/** Each outcome's share of the pool (percent) after every bet, oldest first. */
+export function shareSeries(bets: { time: number; outcome: number | null; amount: string }[], n: number) {
+  const pools = new Array<number>(n).fill(0);
+  const out: { t: number; shares: number[] }[] = [];
+  for (const b of [...bets].sort((a, z) => a.time - z.time)) {
+    if (b.outcome === null || b.outcome >= n) continue;
+    pools[b.outcome] += Number(b.amount);
+    const total = pools.reduce((a, x) => a + x, 0);
+    out.push({ t: b.time, shares: pools.map((p) => Math.round((p / total) * 10000) / 100) });
+  }
+  return out;
+}

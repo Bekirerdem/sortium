@@ -7,19 +7,59 @@ import { OptionRow } from "../components/OptionRow";
 import { Steps } from "../components/Steps";
 import { useMarket } from "../hooks/useMarket";
 import type { Wallet } from "../hooks/useWallet";
-import { evidenceUrl } from "../lib/api";
+import { evidenceUrl, getActivity, type Activity, type ApiMarket } from "../lib/api";
+import { MarketTile } from "../components/MarketTile";
+import { PoolChart } from "../components/PoolChart";
+import { Rail } from "../components/Rail";
+import { usePoll } from "../hooks/usePoll";
 import { EXPLORER, claim, readCodeHash } from "../lib/chain";
-import { compactNum, countdown, usd } from "../lib/format";
-import { decidedAt, errorText, useLang, useT } from "../lib/i18n";
+import { avatar, compactNum, countdown, shortAddr, usd } from "../lib/format";
+import { ago, decidedAt, errorText, useLang, useT } from "../lib/i18n";
 import { artFor, coverOf, leaderIndex, splitLabel } from "../lib/market";
 import { EASE, reduced, useEntrance, useMagnetic, useTilt } from "../lib/motion";
-import { displayQuestion } from "../lib/question";
+import { displayOutcome, displayQuestion } from "../lib/question";
 import { useNow } from "../hooks/useNow";
-import { family } from "../lib/market";
+import { category, family } from "../lib/market";
 
-type Props = { id: number; initialPick: number | null; wallet: Wallet; onToast: (m: string) => void; onArt: (a?: string) => void };
+type Props = { id: number; initialPick: number | null; wallet: Wallet; markets: ApiMarket[] | null; onToast: (m: string) => void; onArt: (a?: string) => void };
 
-export function Market({ id, initialPick, wallet, onToast, onArt }: Props) {
+/** Who picked what on this market: the latest picks, or the biggest ones. */
+function Picks({ bets, outcomes, meta }: { bets: Activity[] | null; outcomes: string[]; meta: Record<string, unknown> }) {
+  const t = useT();
+  const lang = useLang();
+  const now = useNow(10_000);
+  const [tab, setTab] = useState<"recent" | "top">("recent");
+  const list = (bets ?? []).filter((b) => b.kind === "bet" && b.outcome !== null);
+  const shown = (tab === "top" ? [...list].sort((a, b) => Number(BigInt(b.amount) - BigInt(a.amount))) : list).slice(0, 8);
+  return (
+    <section className="panel picks-panel">
+      <div className="chart-head">
+        <div className="ranges" role="tablist">
+          {(["recent", "top"] as const).map((k) => <button key={k} role="tab" aria-pressed={tab === k} onClick={() => setTab(k)}>{t.tabs[k]}</button>)}
+        </div>
+      </div>
+      {bets && shown.length === 0 && <p className="empty">{t.chart.empty}</p>}
+      <ol className="feed">
+        {shown.map((b) => {
+          const raw = outcomes[b.outcome!] ?? "";
+          const title = raw === "Other" ? t.option.other : splitLabel(displayOutcome(raw, lang)).title;
+          return (
+            <li key={`${b.tx}-${b.outcome}`}>
+              <a href={`${EXPLORER}/tx/${b.tx}`} target="_blank" rel="noopener">
+                <span className="av" style={{ background: avatar(b.user) }} aria-hidden />
+                <span className="fx"><b>{t.home.tickerBet(shortAddr(b.user), usd(BigInt(b.amount), lang), title)}</b><span>{ago(b.time, lang, now)}</span></span>
+                {artFor(meta, b.outcome!) ? <img src={artFor(meta, b.outcome!)} alt="" /> : <span />}
+              </a>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
+export function Market({ id, initialPick, wallet, markets, onToast, onArt }: Props) {
+  const bets = usePoll(() => getActivity(300, id), 15_000);
   const { meta, chain, error, reload } = useMarket(id, wallet.address);
   const t = useT();
   const lang = useLang();
@@ -66,6 +106,10 @@ export function Market({ id, initialPick, wallet, onToast, onArt }: Props) {
   const question = displayQuestion(meta, { lang });
   const tweet = `https://x.com/intent/post?text=${encodeURIComponent(t.market.tweet(question))}&url=${encodeURIComponent(shareUrl)}`;
   const liveValue = meta.live ? (Number.isFinite(Number(meta.live.value)) ? compactNum(Number(meta.live.value), lang) : meta.live.value) : null;
+  const related = (markets ?? [])
+    .filter((r) => r.id !== id && r.status === "open" && r.lockTime > now && !r.demo)
+    .sort((a, b) => Number(b.entity === meta.entity) - Number(a.entity === meta.entity) || Number(category(b) === category(meta)) - Number(category(a) === category(meta)) || a.lockTime - b.lockTime)
+    .slice(0, 10);
   const familyName = family(meta.templateKey) === "YouTube" ? t.family.youtube : t.family.music;
   const claimable = usd(chain.claimable, lang);
 
@@ -118,6 +162,8 @@ export function Market({ id, initialPick, wallet, onToast, onArt }: Props) {
           </div>
 
           <div className="details">
+            <PoolChart bets={bets ?? []} outcomes={meta.outcomes} pools={pools} now={now} />
+            <Picks bets={bets} outcomes={meta.outcomes} meta={meta.meta} />
             {chain.claimable > 0n && (
               <div className="panel" data-rise>
                 <h3>{chain.state === 4 ? t.market.cancelledTitle : t.market.wonTitle}</h3>
@@ -139,6 +185,12 @@ export function Market({ id, initialPick, wallet, onToast, onArt }: Props) {
           </div>
         </div>
       </section>
+      {related.length > 0 && (
+        <>
+          <div className="rail-head"><h2>{t.tabs.related}</h2></div>
+          <Rail>{related.map((r) => <MarketTile key={r.id} m={r} now={now} />)}</Rail>
+        </>
+      )}
       <BetSlip marketId={id} label={selected === null ? undefined : meta.outcomes[selected]} art={selected === null ? undefined : artFor(meta.meta, selected)}
         pools={pools} selected={selected} open={open} wallet={wallet} onDone={reload} onToast={onToast} />
     </>
