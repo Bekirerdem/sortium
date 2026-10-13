@@ -27,6 +27,8 @@ export function BetSlip({ marketId, label, art, pools, selected, open, wallet, o
   const t = useT();
   const lang = useLang();
   const [amount, setAmount] = useState(25);
+  // the typed text lives on its own: deriving it from `amount` swallowed "10" on the way to "1000" and every "0." on the way to "0.5"
+  const [custom, setCustom] = useState("");
   const [busy, setBusy] = useState(false);
   const slip = useRef<HTMLDivElement>(null);
   const payout = useRef<HTMLElement>(null);
@@ -95,10 +97,15 @@ export function BetSlip({ marketId, label, art, pools, selected, open, wallet, o
       </div>
       <div className="amts" role="group" aria-label={t.slip.amount}>
         {AMOUNTS.map((a) => (
-          <button key={a} aria-pressed={a === amount} onClick={() => setAmount(a)}>{a}</button>
+          <button key={a} aria-pressed={custom === "" && a === amount} onClick={() => { setCustom(""); setAmount(a); }}>{a}</button>
         ))}
-        <input inputMode="decimal" aria-label={t.slip.custom} value={AMOUNTS.includes(amount) ? "" : amount || ""} placeholder={t.slip.other}
-          onChange={(e) => setAmount(Number(e.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "")) || 0)} />
+        <input inputMode="decimal" aria-label={t.slip.custom} value={custom} placeholder={t.slip.other}
+          onChange={(e) => {
+            const [whole, ...rest] = e.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "").split(".");
+            const text = rest.length ? `${whole}.${rest.join("").slice(0, 6)}` : whole;
+            setCustom(text);
+            setAmount(Number(text) || 0);
+          }} />
       </div>
       {wallet.address ? (
         <button ref={go} className="btn dark" disabled={busy || selected === null || tooSmall || tooBig} onClick={submit}>
